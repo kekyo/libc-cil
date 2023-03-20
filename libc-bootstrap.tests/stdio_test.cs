@@ -9,6 +9,7 @@
 
 using C.type;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -16,7 +17,7 @@ namespace C;
 
 public sealed class stdio_test
 {
-    private unsafe string sprintf(string fmt, params object[] args)
+    private unsafe string sprintf0(string fmt, __arglist)
     {
         __obj_holder pfmt = fmt;
         var b = new List<byte>();
@@ -30,9 +31,13 @@ public sealed class stdio_test
                     l--;
                 }
             },
-            pfmt, new va_arglist(args));
+            pfmt,
+            text.__va_list_new(__arglist));
         return Encoding.UTF8.GetString(b.ToArray());
     }
+
+    private string sprintf(string fmt, object arg) =>
+        sprintf0(fmt, __arglist(arg));
 
     [Test]
     public void digit()

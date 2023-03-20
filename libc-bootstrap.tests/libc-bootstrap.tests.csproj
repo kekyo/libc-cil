@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <TargetFrameworks>net48</TargetFrameworks>
     <RootNamespace>C</RootNamespace>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -11,6 +11,12 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
     <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="libc-compat">
+      <HintPath>..\libc-compat\bin\Debug\net40\libc-compat.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

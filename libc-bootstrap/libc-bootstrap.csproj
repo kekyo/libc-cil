@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net20;net35;net40;net45;net461;net48;netstandard2.0;netstandard2.1;netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net5.0;net6.0;net7.0</TargetFrameworks>
+    <!--<TargetFrameworks>net20;net35;net40;net45;net461;net48;netstandard2.0;netstandard2.1;netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;net5.0;net6.0;net7.0</TargetFrameworks>-->
+    <TargetFrameworks>net40</TargetFrameworks>
     <RootNamespace>C</RootNamespace>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -11,6 +12,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="libc-compat">
+      <HintPath>..\libc-compat\bin\Debug\net40\libc-compat.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
