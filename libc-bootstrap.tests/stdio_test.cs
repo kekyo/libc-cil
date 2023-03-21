@@ -18,6 +18,7 @@ public sealed class stdio_test
 {
     private unsafe string sprintf(string fmt, params object[] args)
     {
+        text.va_start(out var ap, args);
         __obj_holder pfmt = fmt;
         var b = new List<byte>();
         text.__vwrprintf(
@@ -30,7 +31,7 @@ public sealed class stdio_test
                     l--;
                 }
             },
-            pfmt, new va_arglist(args));
+            pfmt, ap);
         return Encoding.UTF8.GetString(b.ToArray());
     }
 

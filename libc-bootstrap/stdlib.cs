@@ -37,11 +37,11 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
-    // uint64_t strtoul(char *nptr, char **endptr, int base);
+    // unsigned long strtoul(const char *nptr, char **endptr, int base);
     public static unsafe ulong strtoul(sbyte* nptr, sbyte** endptr, int @base) =>
         stdlib_impl.strtoul(nptr, endptr, @base);
 
-    // double strtod(char *nptr, char **endptr);
+    // double strtod(const char *nptr, char **endptr);
     public static unsafe double strtod(sbyte* nptr, sbyte** endptr) =>
         stdlib_impl.strtod(nptr, endptr);
 

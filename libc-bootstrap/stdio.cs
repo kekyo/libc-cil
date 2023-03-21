@@ -44,20 +44,27 @@ namespace C
     public static partial class text
     {
         // int printf(char *fmt, ...);
-        public static unsafe int printf(sbyte* fmt, va_arglist args)
+        public static unsafe int printf(sbyte* fmt, __va_arglist args)
         {
-            var len = stdio_impl.isprintf(out var str, fmt, args);
+            va_start(out var ap, args);
+            var len = stdio_impl.isprintf(out var str, fmt, ap);
             Console.Write(str);
             return len;
         }
 
         // int sprintf(char *buf, char *fmt, ...);
-        public static unsafe int sprintf(sbyte* buf, sbyte* fmt, va_arglist args) =>
-            vsprintf(buf, fmt, args);
+        public static unsafe int sprintf(sbyte* buf, sbyte* fmt, __va_arglist args)
+        {
+            va_start(out var ap, args);
+            return vsprintf(buf, fmt, ap);
+        }
 
         // int fprintf(FILE *fp, char *fmt, ...);
-        public static unsafe int fprintf(FILE* fp, sbyte* fmt, va_arglist args) =>
-            vfprintf(fp, fmt, args);
+        public static unsafe int fprintf(FILE* fp, sbyte* fmt, __va_arglist args)
+        {
+            va_start(out var ap, args);
+            return vfprintf(fp, fmt, ap);
+        }
 
         // FILE *fopen(char *pathname, char *mode);
         public static unsafe FILE* fopen(sbyte* pathname, sbyte* mode)
@@ -334,7 +341,7 @@ namespace C
 
                     if (*fmt == __string)
                     {
-                        var ps = (sbyte*)ap.arg_ptr();
+                        var ps = (sbyte*)__va_arg_ptr(&ap);
                         if (ps != null)
                         {
                             var p = ps;
@@ -358,32 +365,8 @@ namespace C
                     }
                     else if (*fmt == __char)
                     {
-                        var nv = ap.arg<object>();
-                        string v = "";
-                        if (nv is sbyte tv1)
-                        {
-                            v = ((char)(byte)tv1).ToString(CultureInfo.InvariantCulture);
-                        }
-                        else if (nv is byte tv2)
-                        {
-                            v = ((char)tv2).ToString(CultureInfo.InvariantCulture);
-                        }
-                        else if (nv is short tv3)
-                        {
-                            v = ((char)(byte)tv3).ToString(CultureInfo.InvariantCulture);
-                        }
-                        else if (nv is ushort tv4)
-                        {
-                            v = ((char)(byte)tv4).ToString(CultureInfo.InvariantCulture);
-                        }
-                        else if (nv is int tv5)
-                        {
-                            v = ((char)(byte)tv5).ToString(CultureInfo.InvariantCulture);
-                        }
-                        else if (nv is uint tv6)
-                        {
-                            v = ((char)(byte)tv6).ToString(CultureInfo.InvariantCulture);
-                        }
+                        var v = ((char)__va_arg_int8(&ap)).
+                            ToString(CultureInfo.InvariantCulture);
                         var bytes = Encoding.UTF8.GetBytes(v);
                         len = (nuint)bytes.Length;
                         if (!after_pads)
@@ -408,46 +391,12 @@ namespace C
                         switch (mod)
                         {
                             case __modifiers.__long:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is long tv1)
-                                    {
-                                        v = tv1.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is ulong tv2)
-                                    {
-                                        v = ((long)tv2).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                }
+                                v = __va_arg_int64(&ap).
+                                    ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                             default:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is sbyte tv1)
-                                    {
-                                        v = tv1.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is short tv2)
-                                    {
-                                        v = tv2.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is int tv3)
-                                    {
-                                        v = tv3.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is byte tv4)
-                                    {
-                                        v = ((int)tv4).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is ushort tv5)
-                                    {
-                                        v = ((int)tv5).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is uint tv6)
-                                    {
-                                        v = ((int)tv6).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                }
+                                v = __va_arg_int32(&ap).
+                                    ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                         }
                         var bytes = Encoding.UTF8.GetBytes(v);
@@ -488,54 +437,17 @@ namespace C
                         switch (mod)
                         {
                             case __modifiers.__long:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is ulong tv1)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", tv1);
-                                    }
-                                    else if (nv is long tv2)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (ulong)tv2);
-                                    }
-                                    else if (nv is nint tv3)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (ulong)tv3);
-                                    }
-                                }
+                            case __modifiers.__none when *fmt == __pointer && sizeof(nint) == 8:
+                                v = string.Format(
+                                    CultureInfo.InvariantCulture,
+                                    $"{prefix}{{0:{ff}}}", 
+                                    __va_arg_uint64(&ap));
                                 break;
                             default:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is byte tv1)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", tv1);
-                                    }
-                                    else if (nv is ushort tv2)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", tv2);
-                                    }
-                                    else if (nv is uint tv3)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", tv3);
-                                    }
-                                    else if (nv is sbyte tv4)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (uint)tv4);
-                                    }
-                                    else if (nv is short tv5)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (uint)tv5);
-                                    }
-                                    else if (nv is int tv6)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (uint)tv6);
-                                    }
-                                    else if (nv is nint tv7)
-                                    {
-                                        v = string.Format(CultureInfo.InvariantCulture, $"{prefix}{{0:{ff}}}", (ulong)tv7);
-                                    }
-                                }
+                                v = string.Format(
+                                    CultureInfo.InvariantCulture,
+                                    $"{prefix}{{0:{ff}}}",
+                                    __va_arg_uint32(&ap));
                                 break;
                         }
                         var bytes = Encoding.UTF8.GetBytes(v);
@@ -566,30 +478,12 @@ namespace C
                         {
                             case __modifiers.__tiny:
                             case __modifiers.__half:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is float tv1)
-                                    {
-                                        v = tv1.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is double tv2)
-                                    {
-                                        v = ((float)tv2).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                }
+                                v = __va_arg_float32(&ap).
+                                    ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                             default:
-                                {
-                                    var nv = ap.arg<object>();
-                                    if (nv is double tv1)
-                                    {
-                                        v = tv1.ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                    else if (nv is float tv2)
-                                    {
-                                        v = ((double)tv2).ToString(ff, CultureInfo.InvariantCulture);
-                                    }
-                                }
+                                v = __va_arg_float64(&ap).
+                                    ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                         }
                         var bytes = Encoding.UTF8.GetBytes(v);
