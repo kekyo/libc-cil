@@ -99,7 +99,7 @@ namespace C
         }
 
         // FILE *open_memstream(char **ptr, size_t *sizeloc);
-        public static unsafe FILE* open_memstream(sbyte** ptr, UIntPtr* sizeloc)
+        public static unsafe FILE* open_memstream(sbyte** ptr, nuint* sizeloc)
         {
             try
             {
@@ -113,31 +113,31 @@ namespace C
             }
         }
 
-        // long fread(void *ptr, long size, long nmemb, FILE *fp);
-        public static unsafe UIntPtr fread(void* ptr, UIntPtr size, UIntPtr nmemb, FILE* fp)
+        // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *fp);
+        public static unsafe nuint fread(void* ptr, nuint size, nuint nmemb, FILE* fp)
         {
             try
             {
                 var s = (Stream)__get_obj(fp)!;
-                var buf = new byte[size.ToUInt64() * nmemb.ToUInt64()];
+                var buf = new byte[size * nmemb];
                 var read = s.Read(buf, 0, buf.Length);
-                Marshal.Copy(buf, 0, (IntPtr)ptr, read);
-                return (UIntPtr)read;
+                Marshal.Copy(buf, 0, (nint)ptr, read);
+                return (nuint)read;
             }
             catch (Exception ex)
             {
                 __set_exception_to_errno(ex);
-                return UIntPtr.Zero;
+                return 0;
             }
         }
 
         // size_t fwrite(void *ptr, size_t size, size_t nmemb, FILE *fp);
-        public static unsafe UIntPtr fwrite(void* ptr, UIntPtr size, UIntPtr nmemb, FILE* fp)
+        public static unsafe nuint fwrite(void* ptr, nuint size, nuint nmemb, FILE* fp)
         {
             try
             {
                 var s = (Stream)__get_obj(fp)!;
-                var buf = new byte[size.ToUInt64() * nmemb.ToUInt64()];
+                var buf = new byte[size * nmemb];
                 Marshal.Copy((IntPtr)ptr, buf, 0, buf.Length);
                 s.Write(buf, 0, buf.Length);
                 return nmemb;
@@ -145,7 +145,7 @@ namespace C
             catch (Exception ex)
             {
                 __set_exception_to_errno(ex);
-                return UIntPtr.Zero;
+                return 0;
             }
         }
 

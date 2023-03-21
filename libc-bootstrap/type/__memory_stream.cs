@@ -53,10 +53,10 @@ internal sealed unsafe class __memory_stream : MemoryStream
         this.lastHandle.Free();
         this.lastBuffer = null;
 
-        var buf = ToArray();
+        var buf = base.ToArray();
         *ptr = (sbyte*)text.malloc((nuint)buf.Length);
         Marshal.Copy(buf, 0, (nint)(*ptr), buf.Length);
-        *sizeloc = (nuint)base.Length;
+        *sizeloc = (nuint)buf.Length;
     }
 }
 
