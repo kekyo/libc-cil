@@ -23,7 +23,7 @@ public sealed class fprintf_test
         try
         {
             __obj_holder fmt_ = fmt;
-            text.fprintf(fp, fmt_, text.va_arglist(args));
+            text.fprintf(fp, fmt_, new(args));
             text.fclose(fp);
             fp = null;
             return Encoding.UTF8.GetString((byte*)pbuf, (int)sizeloc);
@@ -133,5 +133,21 @@ public sealed class fprintf_test
     {
         var actual = fprintf("%p", (nint)0x123456);
         Assert.AreEqual("0x123456", actual);
+    }
+
+    [Test]
+    public unsafe void combined2()
+    {
+        __obj_holder str = "ABC";
+        var actual = fprintf("%d, %s", 42, (nint)str.get());
+        Assert.AreEqual("42, ABC", actual);
+    }
+
+    [Test]
+    public unsafe void combined3()
+    {
+        __obj_holder str = "ABC";
+        var actual = fprintf("%d, %s, %f", 42, (nint)str.get(), 123.456);
+        Assert.AreEqual("42, ABC, 123.456", actual);
     }
 }

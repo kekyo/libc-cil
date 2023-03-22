@@ -46,7 +46,7 @@ namespace C
         // int printf(char *fmt, ...);
         public static unsafe int printf(sbyte* fmt, __va_arglist args)
         {
-            va_start(out var ap, args);
+            var ap = va_start(args);
             var len = stdio_impl.isprintf(out var str, fmt, ap);
             Console.Write(str);
             return len;
@@ -55,14 +55,14 @@ namespace C
         // int sprintf(char *buf, char *fmt, ...);
         public static unsafe int sprintf(sbyte* buf, sbyte* fmt, __va_arglist args)
         {
-            va_start(out var ap, args);
+            var ap = va_start(args);
             return vsprintf(buf, fmt, ap);
         }
 
         // int fprintf(FILE *fp, char *fmt, ...);
         public static unsafe int fprintf(FILE* fp, sbyte* fmt, __va_arglist args)
         {
-            va_start(out var ap, args);
+            var ap = va_start(args);
             return vfprintf(fp, fmt, ap);
         }
 
@@ -341,7 +341,7 @@ namespace C
 
                     if (*fmt == __string)
                     {
-                        var ps = (sbyte*)__va_arg_ptr(&ap);
+                        var ps = (sbyte*)va_arg_ptr(&ap);
                         if (ps != null)
                         {
                             var p = ps;
@@ -365,7 +365,7 @@ namespace C
                     }
                     else if (*fmt == __char)
                     {
-                        var v = ((char)__va_arg_int8(&ap)).
+                        var v = ((char)va_arg<sbyte>(&ap)).
                             ToString(CultureInfo.InvariantCulture);
                         var bytes = Encoding.UTF8.GetBytes(v);
                         len = (nuint)bytes.Length;
@@ -391,11 +391,11 @@ namespace C
                         switch (mod)
                         {
                             case __modifiers.__long:
-                                v = __va_arg_int64(&ap).
+                                v = va_arg<long>(&ap).
                                     ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                             default:
-                                v = __va_arg_int32(&ap).
+                                v = va_arg<int>(&ap).
                                     ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                         }
@@ -440,14 +440,14 @@ namespace C
                             case __modifiers.__none when *fmt == __pointer && sizeof(nint) == 8:
                                 v = string.Format(
                                     CultureInfo.InvariantCulture,
-                                    $"{prefix}{{0:{ff}}}", 
-                                    __va_arg_uint64(&ap));
+                                    $"{prefix}{{0:{ff}}}",
+                                    va_arg<ulong>(&ap));
                                 break;
                             default:
                                 v = string.Format(
                                     CultureInfo.InvariantCulture,
                                     $"{prefix}{{0:{ff}}}",
-                                    __va_arg_uint32(&ap));
+                                    va_arg<uint>(&ap));
                                 break;
                         }
                         var bytes = Encoding.UTF8.GetBytes(v);
@@ -470,19 +470,17 @@ namespace C
                     {
                         var ff = fraction_width >= 1 ?
                             $"{(char)*fmt}{fraction_width}" :
-                            *fmt == __float ?
-                                $"{(char)*fmt}6" :
-                                $"{(char)*fmt}1";
+                            *fmt == __float ? $"g7" : $"e1";
                         var v = "";
                         switch (mod)
                         {
                             case __modifiers.__tiny:
                             case __modifiers.__half:
-                                v = __va_arg_float32(&ap).
+                                v = va_arg<float>(&ap).
                                     ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                             default:
-                                v = __va_arg_float64(&ap).
+                                v = va_arg<double>(&ap).
                                     ToString(ff, CultureInfo.InvariantCulture);
                                 break;
                         }

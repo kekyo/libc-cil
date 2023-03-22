@@ -19,7 +19,7 @@ public sealed class sprintf_test
     {
         __array_holder<sbyte> buf = new(100);
         __obj_holder fmt_ = fmt;
-        text.sprintf(buf, fmt_, text.va_arglist(args));
+        text.sprintf(buf, fmt_, new(args));
         var len = text.strlen(buf);
         return Encoding.UTF8.GetString((byte*)buf.get(), (int)len);
     }
@@ -116,5 +116,21 @@ public sealed class sprintf_test
     {
         var actual = sprintf("%p", (nint)0x123456);
         Assert.AreEqual("0x123456", actual);
+    }
+
+    [Test]
+    public unsafe void combined2()
+    {
+        __obj_holder str = "ABC";
+        var actual = sprintf("%d, %s", 42, (nint)str.get());
+        Assert.AreEqual("42, ABC", actual);
+    }
+
+    [Test]
+    public unsafe void combined3()
+    {
+        __obj_holder str = "ABC";
+        var actual = sprintf("%d, %s, %f", 42, (nint)str.get(), 123.456);
+        Assert.AreEqual("42, ABC, 123.456", actual);
     }
 }
