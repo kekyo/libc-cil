@@ -415,7 +415,7 @@ public static partial class text
             var s = sign(nptr, endptr);
             nptr = *endptr;
 
-            if (isdigit(*nptr) != 0)
+            if (isdigit(*nptr) != 0 || *nptr == '.')
             {
                 result = integer(nptr, endptr);
                 nptr = *endptr;

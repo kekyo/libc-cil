@@ -53,12 +53,30 @@ public sealed class strtod_test
     }
 
     [Test]
-    public void float_()
+    public void float_1()
     {
         var actual = strtod("1.23", out var endindex);
 
         Assert.AreEqual(1.23, actual);
         Assert.AreEqual(4, endindex);
+    }
+
+    [Test]
+    public void float_2()
+    {
+        var actual = strtod(".23", out var endindex);
+
+        Assert.AreEqual(0.23, actual);
+        Assert.AreEqual(3, endindex);
+    }
+
+    [Test]
+    public void float_3()
+    {
+        var actual = strtod("1.", out var endindex);
+
+        Assert.AreEqual(1.0, actual);
+        Assert.AreEqual(2, endindex);
     }
 
     [Test]
