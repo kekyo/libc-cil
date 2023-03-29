@@ -35,9 +35,9 @@ public sealed class strtod_test
     }
 
     [Test]
-    public void decimal_not()
+    public void decimal_post_unknown()
     {
-        var actual = strtod("12a", out var endindex);
+        var actual = strtod("12x", out var endindex);
 
         Assert.AreEqual(12.0, actual);
         Assert.AreEqual(2, endindex);
@@ -53,9 +53,27 @@ public sealed class strtod_test
     }
 
     [Test]
+    public void decimal_multiple3_post_unknown()
+    {
+        var actual = strtod("123x", out var endindex);
+
+        Assert.AreEqual(123.0, actual);
+        Assert.AreEqual(3, endindex);
+    }
+
+    [Test]
     public void float_1()
     {
         var actual = strtod("1.23", out var endindex);
+
+        Assert.AreEqual(1.23, actual);
+        Assert.AreEqual(4, endindex);
+    }
+
+    [Test]
+    public void float_1_post_unknown()
+    {
+        var actual = strtod("1.23x", out var endindex);
 
         Assert.AreEqual(1.23, actual);
         Assert.AreEqual(4, endindex);
@@ -71,9 +89,27 @@ public sealed class strtod_test
     }
 
     [Test]
+    public void float_2_post_unknown()
+    {
+        var actual = strtod(".23x", out var endindex);
+
+        Assert.AreEqual(0.23, actual);
+        Assert.AreEqual(3, endindex);
+    }
+
+    [Test]
     public void float_3()
     {
         var actual = strtod("1.", out var endindex);
+
+        Assert.AreEqual(1.0, actual);
+        Assert.AreEqual(2, endindex);
+    }
+
+    [Test]
+    public void float_3_post_unknown()
+    {
+        var actual = strtod("1.x", out var endindex);
 
         Assert.AreEqual(1.0, actual);
         Assert.AreEqual(2, endindex);
@@ -89,9 +125,27 @@ public sealed class strtod_test
     }
 
     [Test]
+    public void float_exp1_post_unknown()
+    {
+        var actual = strtod("1.23e+4x", out var endindex);
+
+        Assert.AreEqual(1.23e+4, actual);
+        Assert.AreEqual(7, endindex);
+    }
+
+    [Test]
     public void float_exp2()
     {
         var actual = strtod("1.23E-4", out var endindex);
+
+        Assert.AreEqual(1.23e-4, actual);
+        Assert.AreEqual(7, endindex);
+    }
+
+    [Test]
+    public void float_exp2_post_unknown()
+    {
+        var actual = strtod("1.23E-4x", out var endindex);
 
         Assert.AreEqual(1.23e-4, actual);
         Assert.AreEqual(7, endindex);
@@ -107,9 +161,27 @@ public sealed class strtod_test
     }
 
     [Test]
+    public void float_exp3_post_unknown()
+    {
+        var actual = strtod("-1.23e4x", out var endindex);
+
+        Assert.AreEqual(-1.23e4, actual);
+        Assert.AreEqual(7, endindex);
+    }
+
+    [Test]
     public void float_exp4()
     {
         var actual = strtod("5E5", out var endindex);
+
+        Assert.AreEqual(5e5, actual);
+        Assert.AreEqual(3, endindex);
+    }
+
+    [Test]
+    public void float_exp4_post_unknown()
+    {
+        var actual = strtod("5E5x", out var endindex);
 
         Assert.AreEqual(5e5, actual);
         Assert.AreEqual(3, endindex);

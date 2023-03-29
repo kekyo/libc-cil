@@ -126,14 +126,8 @@ public static partial class text
 
         /* maximum digits that can't ever overflow for bases 2 through 36,
          * calculated by [int(math.floor(math.log(2**32, i))) for i in range(2, 37)].
-         * Note that this is pessimistic if sizeof(long) > 4.
          */
-        private static unsafe readonly int[] __digit_limit = sizeof(void*) == 4 ?
-            new int[] {
-                0,  0, 32, 20, 16, 13, 12, 11, 10, 10,    /*  0 -  9 */
-                9,  9,  8,  8,  8,  8,  8,  7,  7,  7,    /* 10 - 19 */
-                7,  7,  7,  7,  6,  6,  6,  6,  6,  6,    /* 20 - 29 */
-                6,  6,  6,  6,  6,  6,  6} :              /* 30 - 36 */
+        private static unsafe readonly int[] __digit_limit =
             new int[] {
                 0,   0, 64, 40, 32, 27, 24, 22, 21, 20,   /*  0 -  9 */
                 19,  18, 17, 17, 16, 16, 16, 15, 15, 15,  /* 10 - 19 */
