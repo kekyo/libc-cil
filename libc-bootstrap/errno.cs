@@ -61,7 +61,7 @@ namespace C
                 data.EINVAL => new ArgumentException(),
                 data.ERANGE => new ArithmeticException(),
                 data.ENOMEM => new OutOfMemoryException(),
-                _ => new __unknown_errno_exception(__errno),
+                _ => Marshal.GetExceptionForHR(__errno)!,
             };
 
         // char *strerror(int errnum);
