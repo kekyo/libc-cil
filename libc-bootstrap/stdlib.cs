@@ -8,26 +8,53 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace C;
 
 public static partial class text
 {
+    private static readonly bool break_oom =
+        Environment.GetEnvironmentVariable("LIBC_CIL_DBG_BREAK_OOM") is { } vs &&
+        bool.TryParse(vs, out var v) ? v :
+#if DEBUG
+        true;
+#else
+        false;
+#endif
+
     // We use HGlobal family for allocator instead of COM allocator.
     // Because they can receive size parameter by intptr type.
 
     // void *malloc(size_t size);
-    public static unsafe void* malloc(nuint size) =>
-        (void*)Marshal.AllocHGlobal((nint)size);
+    public static unsafe void* malloc(nuint size)
+    {
+        var p = (void*)Marshal.AllocHGlobal((nint)size);
+        if (p == null && break_oom)
+        {
+            Debugger.Break();
+        }
+        return p;
+    }
 
     // void *calloc(size_t nmemb, size_t size);
     public static unsafe void* calloc(nuint nmemb, nuint size)
     {
         var s = nmemb * size;
         var p = (void*)Marshal.AllocHGlobal((nint)s);
-        // AllocHGlobal is returned uninitialized memory.
-        memset(p, 0, s);
+        if (p == null)
+        {
+            if (break_oom)
+            {
+                Debugger.Break();
+            }
+        }
+        else
+        {
+            // AllocHGlobal is returned uninitialized memory.
+            memset(p, 0, s);
+        }
         return p;
     }
 
