@@ -9,11 +9,16 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
 [assembly:InternalsVisibleTo("libc.tests")]
+
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(void*))]
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(byte*))]
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(sbyte*))]
 
 namespace C;
 
@@ -65,15 +70,17 @@ public static partial class text
     {
         var len = strlen(str);
         var buf = new byte[len];
-        Marshal.Copy((IntPtr)str, buf, 0, (int)len);
+        Marshal.Copy((nint)str, buf, 0, (int)len);
         return Encoding.UTF8.GetString(buf);
     }
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe string __ngetstrn(sbyte* str, nuint len)
     {
-        var buf = new byte[len];
-        Marshal.Copy((IntPtr)str, buf, 0, (int)len);
+        var l = strlen(str);
+        var lr = Math.Min((uint)l, (uint)len);
+        var buf = new byte[lr];
+        Marshal.Copy((nint)str, buf, 0, (int)lr);
         return Encoding.UTF8.GetString(buf);
     }
 
