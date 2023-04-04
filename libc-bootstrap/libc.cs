@@ -24,6 +24,37 @@ namespace C;
 
 public static partial class text
 {
+    private static bool get_debugging_switch(string environment_name, bool default_value =
+#if DEBUG
+            true
+#else
+            false
+#endif
+        ) =>
+        Environment.GetEnvironmentVariable(environment_name) is { } vs &&
+        bool.TryParse(vs, out var v) ? v : default_value;
+
+    private static T get_debugging_switch<T>(string environment_name, T default_value = default!)
+        where T : Enum
+    {
+        try
+        {
+            if (Environment.GetEnvironmentVariable(environment_name) is { } vs)
+            {
+                return (T)Enum.Parse(typeof(T), vs, true);
+            }
+        }
+        catch
+        {
+        }
+        return default_value;
+    }
+
+    private static readonly bool is_enabled_trap =
+        get_debugging_switch("LIBC_CIL_DBG_TRAP");
+
+    ////////////////////////////////////////////////////////////
+
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe void* __alloc_obj(object obj)
     {
@@ -82,6 +113,32 @@ public static partial class text
         var buf = new byte[lr];
         Marshal.Copy((nint)str, buf, 0, (int)lr);
         return Encoding.UTF8.GetString(buf);
+    }
+
+    ////////////////////////////////////////////////////////////
+
+    [DebuggerStepperBoundary]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static void __force_trap()
+    {
+        if (Debugger.IsAttached)
+        {
+            Debugger.Break();
+        }
+        else
+        {
+            Debugger.Launch();
+        }
+    }
+
+    [DebuggerStepperBoundary]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static void __trap()
+    {
+        if (is_enabled_trap)
+        {
+            __force_trap();
+        }
     }
 
     ////////////////////////////////////////////////////////////

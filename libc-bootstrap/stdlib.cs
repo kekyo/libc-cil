@@ -8,59 +8,48 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace C;
 
 public static partial class text
 {
-    private static readonly bool break_oom =
-        Environment.GetEnvironmentVariable("LIBC_CIL_DBG_BREAK_OOM") is { } vs &&
-        bool.TryParse(vs, out var v) ? v :
-#if DEBUG
-        true;
-#else
-        false;
-#endif
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static void _CrtSetBreakAlloc(long lBreakAlloc) =>
+        stdlib_impl.set_break_allocation(lBreakAlloc);
 
-    // We use HGlobal family for allocator instead of COM allocator.
-    // Because they can receive size parameter by intptr type.
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe int _CrtCheckMemory() =>
+        stdlib_impl.verify_heap() ? 1 : 0;
 
     // void *malloc(size_t size);
-    public static unsafe void* malloc(nuint size)
-    {
-        var p = (void*)Marshal.AllocHGlobal((nint)size);
-        if (p == null && break_oom)
-        {
-            Debugger.Break();
-        }
-        return p;
-    }
+    public static unsafe void* malloc(
+        nuint size) =>
+        stdlib_impl.malloc(size, null, 0);
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void* _malloc_dbg(
+        nuint size, sbyte* filename, int linenumber) =>
+        stdlib_impl.malloc(size, filename, linenumber);
 
     // void *calloc(size_t nmemb, size_t size);
-    public static unsafe void* calloc(nuint nmemb, nuint size)
-    {
-        var s = nmemb * size;
-        var p = (void*)Marshal.AllocHGlobal((nint)s);
-        if (p == null)
-        {
-            if (break_oom)
-            {
-                Debugger.Break();
-            }
-        }
-        else
-        {
-            // AllocHGlobal is returned uninitialized memory.
-            memset(p, 0, s);
-        }
-        return p;
-    }
+    public static unsafe void* calloc(
+        nuint nmemb, nuint size) =>
+        stdlib_impl.calloc(nmemb, size, null, 0);
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void* _calloc_dbg(
+        nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
+        stdlib_impl.calloc(nmemb, size, filename, linenumber);
 
     // void free(void *p);
-    public static unsafe void free(void* p) =>
-        Marshal.FreeHGlobal((nint)p);
+    public static unsafe void free(
+        void* p) =>
+        stdlib_impl.free(p);
 
     ///////////////////////////////////////////////////////////////////////
 
@@ -76,6 +65,281 @@ public static partial class text
 
     private static class stdlib_impl
     {
+        // https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-debug-heap-details
+
+        private static readonly ulong no_mans_land_bytes = 0xfdfdfdfdfdfdfdfdUL;
+        private static readonly ulong dead_bytes = 0xdeadbeefdeadbeefUL;
+
+        private enum HeapCheckModes
+        {
+            None,
+            Check,
+            Trap,
+        }
+
+        private static readonly HeapCheckModes heap_check_mode =
+            get_debugging_switch("LIBC_CIL_DBG_HEAP",
+#if DEBUG
+                HeapCheckModes.Trap
+#else
+                HeapCheckModes.None
+#endif
+                );
+
+        private static readonly bool heap_check_always =
+            get_debugging_switch("LIBC_CIL_DBG_HEAP_ALWAYS");
+
+        private unsafe struct CrtMemBlockHeader
+        {
+            private static unsafe CrtMemBlockHeader _head;
+            public static unsafe CrtMemBlockHeader* head;
+
+            static CrtMemBlockHeader()
+            {
+                fixed (CrtMemBlockHeader* p = &_head)
+                {
+                    head = p;
+                    _head._block_header_next = p;
+                    _head._block_header_prev = p;
+                }
+            }
+
+            public CrtMemBlockHeader* _block_header_next;
+            public CrtMemBlockHeader* _block_header_prev;
+            public sbyte* _filename;
+            public int _line_number;
+            public nuint _data_size;
+            public long _request_number;
+            public ulong _gap;
+        }
+
+        private static long _request_number;
+        private static long _break_number;
+        private static readonly object heap_locker = new object();
+
+        [DebuggerStepperBoundary]
+        private static void try_trap_heap(bool force)
+        {
+            if (force || heap_check_mode == HeapCheckModes.Trap)
+            {
+                __force_trap();
+            }
+        }
+
+        public static void set_break_allocation(long number) =>
+            _break_number = number;
+
+        private static unsafe bool verify_heap(bool force)
+        {
+            var header = CrtMemBlockHeader.head->_block_header_next;
+            var count = 0;
+
+            while (header != CrtMemBlockHeader.head)
+            {
+                if (header->_gap != no_mans_land_bytes)
+                {
+                    try_trap_heap(force);
+                    return false;
+                }
+
+                if (header->_data_size == 0)
+                {
+                    try_trap_heap(force);
+                    return false;
+                }
+
+                if (header->_block_header_prev->_block_header_next != header)
+                {
+                    try_trap_heap(force);
+                    return false;
+                }
+                if (header->_block_header_next->_block_header_prev != header)
+                {
+                    try_trap_heap(force);
+                    return false;
+                }
+
+                var _data = (byte*)(header + 1);
+                var _another_gap = _data + header->_data_size;
+
+                fixed (void* ap = &no_mans_land_bytes)
+                {
+                    if (memcmp(_another_gap, ap, sizeof(ulong)) != 0)
+                    {
+                        try_trap_heap(force);
+                        return false;
+                    }
+                }
+
+                header = header->_block_header_next;
+                count++;
+            }
+
+            return true;
+        }
+
+        public static bool verify_heap()
+        {
+            if (heap_check_mode == HeapCheckModes.None)
+            {
+                return true;
+            }
+
+            lock (heap_locker)
+            {
+                return verify_heap(false);
+            }
+        }
+
+        // We use HGlobal family for allocator instead of COM allocator.
+        // Because they can receive size parameter by intptr type.
+
+        public static unsafe void* malloc(
+            nuint size, sbyte* filename, int linenumber)
+        {
+            if (size == 0)
+            {
+                __trap();
+                return null;
+            }
+
+            if (heap_check_mode != HeapCheckModes.None)
+            {
+                var number = Interlocked.Increment(ref _request_number);
+                if (number == _break_number)
+                {
+                    __force_trap();
+                }
+
+                var total_size =
+                    (nuint)sizeof(CrtMemBlockHeader) + size +
+                    sizeof(ulong);
+
+                var header = (CrtMemBlockHeader*)Marshal.AllocHGlobal((nint)total_size);
+                if (header == null)
+                {
+                    try_trap_heap(false);
+                    return null;
+                }
+
+                var _data = (byte*)(header + 1);
+
+                lock (heap_locker)
+                {
+                    if (heap_check_always)
+                    {
+                        verify_heap(true);
+                    }
+
+                    if (CrtMemBlockHeader.head->_block_header_next->_block_header_prev != CrtMemBlockHeader.head)
+                    {
+                        try_trap_heap(true);
+                        return null;
+                    }
+
+                    header->_block_header_next = CrtMemBlockHeader.head->_block_header_next;
+                    CrtMemBlockHeader.head->_block_header_next = header;
+
+                    header->_block_header_prev = CrtMemBlockHeader.head;
+                    header->_block_header_next->_block_header_prev = header;
+
+                    header->_filename = filename;
+                    header->_line_number = linenumber;
+                    header->_data_size = size;
+                    header->_request_number = number;
+                    header->_gap = no_mans_land_bytes;
+
+                    var _another_gap = _data + size;
+                    fixed (void* ap = &no_mans_land_bytes)
+                    {
+                        memcpy(_another_gap, ap, sizeof(ulong));
+                    }
+                }
+
+                memset(_data, 0xcd, size);
+
+                return _data;
+            }
+            else
+            {
+                return (void*)Marshal.AllocHGlobal((nint)size);
+            }
+        }
+
+        public static unsafe void* calloc(
+            nuint nmemb, nuint size, sbyte* filename, int linenumber)
+        {
+            var s = nmemb * size;
+            var p = malloc(s, filename, linenumber);
+            if (p == null)
+            {
+                return null;
+            }
+
+            // malloc is returned uninitialized memory.
+            memset(p, 0, s);
+            return p;
+        }
+
+        public static unsafe void free(void* _data)
+        {
+            if (_data == null)
+            {
+                return;
+            }
+
+            if (heap_check_mode != HeapCheckModes.None)
+            {
+                var header = ((CrtMemBlockHeader*)_data) - 1;
+
+                lock (heap_locker)
+                {
+                    if (heap_check_always)
+                    {
+                        verify_heap(true);
+                    }
+
+                    var next = header->_block_header_next;
+                    var prev = header->_block_header_prev;
+
+                    if (next->_block_header_prev != header)
+                    {
+                        try_trap_heap(true);
+                        return;
+                    }
+
+                    if (prev->_block_header_next != header)
+                    {
+                        try_trap_heap(true);
+                        return;
+                    }
+
+                    next->_block_header_prev = prev;
+                    prev->_block_header_next = next;
+                }
+
+                header->_block_header_next = null;
+                header->_block_header_prev = null;
+                header->_gap = dead_bytes;
+
+                memset(_data, 0xdd, header->_data_size);
+
+                var _another_gap = ((byte*)_data) + header->_data_size;
+                fixed (void* ap = &dead_bytes)
+                {
+                    memcpy(_another_gap, ap, sizeof(ulong));
+                }
+
+                Marshal.FreeHGlobal((nint)header);
+            }
+            else
+            {
+                Marshal.FreeHGlobal((nint)_data);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+
         // strtoul ported from cpython: https://github.com/python/cpython/blob/main/Python/mystrtoul.c
 
         /* Table of digit values for 8-bit string -> integer conversion.

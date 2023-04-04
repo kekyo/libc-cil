@@ -41,10 +41,10 @@ public sealed unsafe class __array_holder<T> : CriticalFinalizerObject
 
     ~__array_holder()
     {
-        if (this.ptr != (T*)0)
+        if (this.ptr != null)
         {
             text.free(this.ptr);
-            this.ptr = (T*)0;
+            this.ptr = null;
         }
     }
 

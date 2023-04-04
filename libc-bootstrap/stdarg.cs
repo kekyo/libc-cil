@@ -30,51 +30,100 @@ namespace C
             internal __va_arg_elem* arg_elems;
             private int index;
 
+            [EditorBrowsable(EditorBrowsableState.Advanced)]
             public __va_arglist(params object[] args)
             {
-                this.arg_elems = (__va_arg_elem*)text.malloc(
-                    (nuint)sizeof(__va_arg_elem) * (nuint)args.Length);
-                foreach (var arg in args)
+                if (args.Length >= 1)
                 {
-                    this.add(arg);
+                    this.arg_elems = (__va_arg_elem*)text.malloc(
+                        (nuint)sizeof(__va_arg_elem) * (nuint)args.Length);
+                    foreach (var arg in args)
+                    {
+                        this.add(arg);
+                    }
                 }
             }
 
-            internal __va_arglist(int count) =>
-                this.arg_elems = (__va_arg_elem*)text.malloc(
-                    (nuint)sizeof(__va_arg_elem) * (nuint)count);
+            internal __va_arglist(int count)
+            {
+                if (count >= 1)
+                {
+                    this.arg_elems = (__va_arg_elem*)text.malloc(
+                        (nuint)sizeof(__va_arg_elem) * (nuint)count);
+                }
+            }
 
             ~__va_arglist()
             {
                 if (this.arg_elems != null)
                 {
-                    for (var index = 0; index < this.index; index++)
+                    try
                     {
-                        __va_arg_elem* arg_elem = &this.arg_elems[index];
-                        if (arg_elem->handle_ptr != 0)
+                        for (var index = 0; index < this.index; index++)
                         {
-                            var handle = GCHandle.FromIntPtr(arg_elem->handle_ptr);
-                            handle.Free();
+                            var arg_elem = this.arg_elems + index;
+                            if (arg_elem->handle_ptr != 0)
+                            {
+                                if (arg_elem->ptr == null)
+                                {
+                                    text.__force_trap();
+                                }
+
+                                var handle = GCHandle.FromIntPtr(arg_elem->handle_ptr);
+                                if (!handle.IsAllocated)
+                                {
+                                    text.__force_trap();
+                                }
+                                else
+                                {
+                                    handle.Free();
+                                }
+                            }
+                            else
+                            {
+                                if (arg_elem->ptr != null)
+                                {
+                                    text.__force_trap();
+                                }
+                            }
                         }
                     }
-                    text.free(this.arg_elems);
-                    this.arg_elems = null;
+                    finally
+                    {
+                        text.free(this.arg_elems);
+                        this.arg_elems = null;
+                    }
                 }
             }
 
-            internal unsafe void add(object value)
+            internal unsafe void add(object? value)
             {
+                if (this.arg_elems == null)
+                {
+                    text.__force_trap();
+                    return;
+                }
+
+                var arg_elem = this.arg_elems + this.index++;
+
                 var v = value switch
                 {
                     float f32 => (double)f32,   // ISO/IEC 9899 6.5.2.2 Function calls - Paragraph 6
                     _ => value,
                 };
 
-                var handle = GCHandle.Alloc(v, GCHandleType.Pinned);
+                if (v != null)
+                {
+                    var handle = GCHandle.Alloc(v, GCHandleType.Pinned);
 
-                __va_arg_elem* arg_elem = &this.arg_elems[this.index++];
-                arg_elem->handle_ptr = GCHandle.ToIntPtr(handle);
-                arg_elem->ptr = (void*)handle.AddrOfPinnedObject();
+                    arg_elem->ptr = (void*)handle.AddrOfPinnedObject();
+                    arg_elem->handle_ptr = GCHandle.ToIntPtr(handle);
+                }
+                else
+                {
+                    arg_elem->ptr = null;
+                    arg_elem->handle_ptr = 0;
+                }
             }
         }
 
@@ -87,6 +136,12 @@ namespace C
 
             internal void* get()
             {
+                if (this.arg_elems == null)
+                {
+                    text.__force_trap();
+                    return null;
+                }
+
                 var arg_elem = this.arg_elems++;
                 return arg_elem->ptr;
             }
@@ -101,8 +156,19 @@ namespace C
             new(args.arg_elems);
 
         public static unsafe T va_arg<T>(va_list* ap)
-            where T : unmanaged =>
-            *(T*)ap->get();
+            where T : unmanaged
+        {
+            var p = ap->get();
+            if (p != null)
+            {
+                return *(T*)p;
+            }
+            else
+            {
+                return default!;
+            }
+        }
+
         public static unsafe void* va_arg_ptr(va_list* ap) =>
             *(void**)ap->get();
 

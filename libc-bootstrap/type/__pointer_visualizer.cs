@@ -29,6 +29,11 @@ public sealed unsafe class __pointer_visualizer
     {
         get
         {
+            if (max_length == 0)
+            {
+                return "(disabled)";
+            }
+
             try
             {
                 return this.ptr != null ?
@@ -46,6 +51,11 @@ public sealed unsafe class __pointer_visualizer
     {
         get
         {
+            if (max_length == 0)
+            {
+                return null!;
+            }
+
             try
             {
                 if (this.ptr != null)
@@ -70,6 +80,11 @@ public sealed unsafe class __pointer_visualizer
     {
         get
         {
+            if (max_length == 0)
+            {
+                return "(disabled)";
+            }
+
             try
             {
                 if (this.ptr != null)
