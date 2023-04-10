@@ -10,6 +10,7 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using C.type;
 
@@ -17,133 +18,182 @@ namespace C
 {
     namespace type
     {
-        public struct va_arglist
+        internal unsafe struct __va_arg_elem
         {
-            private object[] args;
-            private int index;
-
-            public va_arglist(params object[] args)
-            {
-                this.args = args;
-                this.index = args.Length;
-            }
-
-            private va_arglist(int count) =>
-                this.args = new object[count];
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public void add(short value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public void add(int value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public void add(long value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public void add(float value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public void add(double value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe void add(nint value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe void add(nuint value) =>
-                this.args[this.index++] = value;
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe void add(void* value) =>
-                this.args[this.index++] = (nint)value;
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public va_list start()
-            {
-                var handle = GCHandle.Alloc(this.args, GCHandleType.Weak);
-                return new(GCHandle.ToIntPtr(handle));
-            }
-
-            public static implicit operator va_list(va_arglist args) =>
-                args.start();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public static va_arglist create(int count) =>
-                new(count);
+            public void* ptr;
+            public nint handle_ptr;
         }
 
-        public struct va_list
+        [EditorBrowsable(EditorBrowsableState.Advanced)]
+        public sealed unsafe class __va_arglist : CriticalFinalizerObject
         {
-            private readonly nint handle;
+            internal __va_arg_elem* arg_elems;
             private int index;
 
-            internal va_list(nint handle) =>
-                this.handle = handle;
-
-            public T arg<T>()
+            [EditorBrowsable(EditorBrowsableState.Advanced)]
+            public __va_arglist(params object[] args)
             {
-                var handle = GCHandle.FromIntPtr(this.handle);
-                var args = (object[])handle.Target!;
-                return args[this.index++] is T v ? v : default!;
+                if (args.Length >= 1)
+                {
+                    this.arg_elems = (__va_arg_elem*)text.malloc(
+                        (nuint)sizeof(__va_arg_elem) * (nuint)args.Length);
+                    foreach (var arg in args)
+                    {
+                        this.add(arg);
+                    }
+                }
             }
 
-            // TODO: Make flexible
-            //   byte --> uint8
-            //   byte --> uint32
-            //   byte --> int32
-            //   long --> long
-            //   long --> ulong
-            //   nint --> nint
-            //   nint --> nuint
-            //   nint --> void*
-            //   ...
+            internal __va_arglist(int count)
+            {
+                if (count >= 1)
+                {
+                    this.arg_elems = (__va_arg_elem*)text.malloc(
+                        (nuint)sizeof(__va_arg_elem) * (nuint)count);
+                }
+            }
 
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public sbyte arg_int8() =>
-                this.arg<sbyte>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public short arg_int16() =>
-                this.arg<short>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public int arg_int32() =>
-                this.arg<int>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public long arg_int64() =>
-                this.arg<long>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public byte arg_uint8() =>
-                this.arg<byte>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public ushort arg_uint16() =>
-                this.arg<ushort>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public uint arg_uint32() =>
-                this.arg<uint>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public ulong arg_uint64() =>
-                this.arg<ulong>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public float arg_float32() =>
-                this.arg<float>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public double arg_float64() =>
-                this.arg<double>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe nint arg_nint() =>
-                this.arg<nint>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe nuint arg_nuint() =>
-                this.arg<nuint>();
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            public unsafe void* arg_ptr() =>
-                (void*)this.arg<nint>();
+            ~__va_arglist()
+            {
+                if (this.arg_elems != null)
+                {
+                    try
+                    {
+                        for (var index = 0; index < this.index; index++)
+                        {
+                            var arg_elem = this.arg_elems + index;
+                            if (arg_elem->handle_ptr != 0)
+                            {
+                                if (arg_elem->ptr == null)
+                                {
+                                    text.__force_trap();
+                                }
 
-            public void end() =>
-                this.index = 0;
+                                var handle = GCHandle.FromIntPtr(arg_elem->handle_ptr);
+                                if (!handle.IsAllocated)
+                                {
+                                    text.__force_trap();
+                                }
+                                else
+                                {
+                                    handle.Free();
+                                }
+                            }
+                            else
+                            {
+                                if (arg_elem->ptr != null)
+                                {
+                                    text.__force_trap();
+                                }
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        text.free(this.arg_elems);
+                        this.arg_elems = null;
+                    }
+                }
+            }
+
+            internal unsafe void add(object? value)
+            {
+                if (this.arg_elems == null)
+                {
+                    text.__force_trap();
+                    return;
+                }
+
+                var arg_elem = this.arg_elems + this.index++;
+
+                var v = value switch
+                {
+                    float f32 => (double)f32,   // ISO/IEC 9899 6.5.2.2 Function calls - Paragraph 6
+                    _ => value,
+                };
+
+                if (v != null)
+                {
+                    var handle = GCHandle.Alloc(v, GCHandleType.Pinned);
+
+                    arg_elem->ptr = (void*)handle.AddrOfPinnedObject();
+                    arg_elem->handle_ptr = GCHandle.ToIntPtr(handle);
+                }
+                else
+                {
+                    arg_elem->ptr = null;
+                    arg_elem->handle_ptr = 0;
+                }
+            }
+        }
+
+        public unsafe struct va_list
+        {
+            private __va_arg_elem* arg_elems;
+
+            internal va_list(__va_arg_elem* arg_elems) =>
+                this.arg_elems = arg_elems;
+
+            internal void* get()
+            {
+                if (this.arg_elems == null)
+                {
+                    text.__force_trap();
+                    return null;
+                }
+
+                var arg_elem = this.arg_elems++;
+                return arg_elem->ptr;
+            }
         }
     }
 
     public static partial class text
     {
+        // Public interfaces for typical languages.
+
+        public static unsafe va_list va_start(__va_arglist args) =>
+            new(args.arg_elems);
+
+        public static unsafe T va_arg<T>(va_list* ap)
+            where T : unmanaged
+        {
+            var p = ap->get();
+            if (p != null)
+            {
+                return *(T*)p;
+            }
+            else
+            {
+                return default!;
+            }
+        }
+
+        public static unsafe void* va_arg_ptr(va_list* ap) =>
+            *(void**)ap->get();
+
+        ///////////////////////////////////////////////////////////////////////
+
+        // Private interfaces for C language.
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static __va_arglist __va_arglist_new(int count) =>
+            new(count);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void __va_arglist_add(__va_arglist ap, object value) =>
+            ap.add(value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static unsafe void __va_start(va_list* ap, __va_arglist args) =>
+            *ap = new(args.arg_elems);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static unsafe void* __va_arg(va_list* ap) =>
+            ap->get();
+
+        ///////////////////////////////////////////////////////////////////////
+
         // int vsprintf(char *buf, char *fmt, va_list ap);
         public static unsafe int vsprintf(sbyte* buf, sbyte* fmt, va_list ap)
         {

@@ -9,30 +9,22 @@
 
 using C.type;
 using NUnit.Framework;
-using System.Collections.Generic;
 using System.Text;
 
 namespace C;
 
-public sealed class stdio_test
+public sealed class sprintf_test
 {
     private unsafe string sprintf(string fmt, params object[] args)
     {
-        __obj_holder pfmt = fmt;
-        var b = new List<byte>();
-        text.__vwrprintf(
-            (p, l) =>
-            {
-                while (l > 0)
-                {
-                    b.Add((byte)*p);
-                    p++;
-                    l--;
-                }
-            },
-            pfmt, new va_arglist(args));
-        return Encoding.UTF8.GetString(b.ToArray());
+        __array_holder<sbyte> buf = new(100);
+        __obj_holder fmt_ = fmt;
+        text.sprintf(buf, fmt_, new(args));
+        var len = text.strlen(buf);
+        return Encoding.UTF8.GetString((byte*)buf.get(), (int)len);
     }
+
+    ////////////////////////////////////////////////////////////////////////////
 
     [Test]
     public void digit()
@@ -124,5 +116,21 @@ public sealed class stdio_test
     {
         var actual = sprintf("%p", (nint)0x123456);
         Assert.AreEqual("0x123456", actual);
+    }
+
+    [Test]
+    public unsafe void combined2()
+    {
+        __obj_holder str = "ABC";
+        var actual = sprintf("%d, %s", 42, (nint)str.get());
+        Assert.AreEqual("42, ABC", actual);
+    }
+
+    [Test]
+    public unsafe void combined3()
+    {
+        __obj_holder str = "ABC";
+        var actual = sprintf("%d, %s, %f", 42, (nint)str.get(), 123.456);
+        Assert.AreEqual("42, ABC, 123.456", actual);
     }
 }

@@ -24,28 +24,36 @@ namespace C
     public static partial class text
     {
         [ThreadStatic]
-        private static Exception? ex_errno;
+        private static int __errno;
         [ThreadStatic]
-        private static int internal_errno;
-        [ThreadStatic]
-        private static __obj_holder? error_message;
+        private static __obj_holder? __error_message;
 
-        private static void __set_exception_to_errno(Exception ex)
+        // int* __errno_location();
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static unsafe int* __errno_location()
         {
-            ex_errno = ex;
-            internal_errno = ex_errno switch
+            fixed (int* p = &__errno)
+            {
+                return p;
+            }
+        }
+
+        // int errno;
+        public static int errno
+        {
+            get => __errno;
+            set => __errno = value;
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Advanced)]
+        public static void __set_exception_to_errno(Exception ex) =>
+            __errno = ex switch
             {
                 ArgumentException _ => data.EINVAL,
                 ArithmeticException _ => data.ERANGE,
                 OutOfMemoryException _ => data.ENOMEM,
-                _ => Marshal.GetHRForException(ex_errno),
+                _ => Marshal.GetHRForException(ex),
             };
-        }
-
-        // int __get_errno();
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static int __get_errno() =>
-            internal_errno;
 
         private static Exception __to_exception(int code) =>
             code switch
@@ -53,31 +61,15 @@ namespace C
                 data.EINVAL => new ArgumentException(),
                 data.ERANGE => new ArithmeticException(),
                 data.ENOMEM => new OutOfMemoryException(),
-                _ => new __unknown_errno_exception(internal_errno),
+                _ => Marshal.GetExceptionForHR(__errno)!,
             };
-
-        // void __set_errno(int code);
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void __set_errno(int code)
-        {
-            internal_errno = code;
-            ex_errno = internal_errno != 0 ?
-                __to_exception(internal_errno) : null;
-        }
-
-        // int errno;
-        public static int errno
-        {
-            get => __get_errno();
-            set => __set_errno(value);
-        }
 
         // char *strerror(int errnum);
         public static unsafe sbyte* strerror(int errnum)
         {
             var ex = __to_exception(errnum);
-            error_message = ex.Message;
-            return error_message;
+            __error_message = ex.Message;
+            return __error_message;
         }
     }
 }

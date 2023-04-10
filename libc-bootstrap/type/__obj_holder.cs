@@ -25,10 +25,10 @@ public sealed unsafe class __obj_holder : CriticalFinalizerObject
 
     ~__obj_holder()
     {
-        if (this.ptr != (void*)0)
+        if (this.ptr != null)
         {
             text.free(this.ptr);
-            this.ptr = (void*)0;
+            this.ptr = null;
         }
     }
 

@@ -9,16 +9,52 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
 [assembly:InternalsVisibleTo("libc.tests")]
 
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(void*))]
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(byte*))]
+[assembly: DebuggerTypeProxy(typeof(C.type.__pointer_visualizer), Target = typeof(sbyte*))]
+
 namespace C;
 
 public static partial class text
 {
+    private static bool get_debugging_switch(string environment_name, bool default_value =
+#if DEBUG
+            true
+#else
+            false
+#endif
+        ) =>
+        Environment.GetEnvironmentVariable(environment_name) is { } vs &&
+        bool.TryParse(vs, out var v) ? v : default_value;
+
+    private static T get_debugging_switch<T>(string environment_name, T default_value = default!)
+        where T : Enum
+    {
+        try
+        {
+            if (Environment.GetEnvironmentVariable(environment_name) is { } vs)
+            {
+                return (T)Enum.Parse(typeof(T), vs, true);
+            }
+        }
+        catch
+        {
+        }
+        return default_value;
+    }
+
+    private static readonly bool is_enabled_trap =
+        get_debugging_switch("LIBC_CIL_DBG_TRAP");
+
+    ////////////////////////////////////////////////////////////
+
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe void* __alloc_obj(object obj)
     {
@@ -38,6 +74,24 @@ public static partial class text
     {
         var handle = GCHandle.FromIntPtr((nint)p);
         handle.Free();
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe T** __alloc_and_set_field<T>(T* p)
+        where T : unmanaged
+    {
+        var to = (T**)malloc((nuint)sizeof(T*));
+        *to = (T*)p;
+        return to;
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe T* __alloc_and_set_field<T>(in T p)
+        where T : unmanaged
+    {
+        var to = (T*)malloc((nuint)sizeof(T));
+        *to = p;
+        return to;
     }
 
     ////////////////////////////////////////////////////////////
@@ -65,16 +119,44 @@ public static partial class text
     {
         var len = strlen(str);
         var buf = new byte[len];
-        Marshal.Copy((IntPtr)str, buf, 0, (int)len);
+        Marshal.Copy((nint)str, buf, 0, (int)len);
         return Encoding.UTF8.GetString(buf);
     }
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe string __ngetstrn(sbyte* str, nuint len)
     {
-        var buf = new byte[len];
-        Marshal.Copy((IntPtr)str, buf, 0, (int)len);
+        var l = strlen(str);
+        var lr = Math.Min((uint)l, (uint)len);
+        var buf = new byte[lr];
+        Marshal.Copy((nint)str, buf, 0, (int)lr);
         return Encoding.UTF8.GetString(buf);
+    }
+
+    ////////////////////////////////////////////////////////////
+
+    [DebuggerStepperBoundary]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static void __force_trap()
+    {
+        if (Debugger.IsAttached)
+        {
+            Debugger.Break();
+        }
+        else
+        {
+            Debugger.Launch();
+        }
+    }
+
+    [DebuggerStepperBoundary]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static void __trap()
+    {
+        if (is_enabled_trap)
+        {
+            __force_trap();
+        }
     }
 
     ////////////////////////////////////////////////////////////

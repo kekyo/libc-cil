@@ -40,6 +40,8 @@ internal sealed unsafe class __memory_stream : MemoryStream
         {
             this.lastHandle.Free();
             this.lastBuffer = buf;
+
+            // TODO: Did not make null-termination.
             this.lastHandle = GCHandle.Alloc(this.lastBuffer, GCHandleType.Pinned);
             *ptr = (sbyte*)this.lastHandle.AddrOfPinnedObject().ToPointer();
         }
@@ -53,10 +55,11 @@ internal sealed unsafe class __memory_stream : MemoryStream
         this.lastHandle.Free();
         this.lastBuffer = null;
 
-        var buf = ToArray();
-        *ptr = (sbyte*)text.malloc((nuint)buf.Length);
+        var buf = base.ToArray();
+        *ptr = (sbyte*)text.malloc((nuint)buf.Length + 1);
         Marshal.Copy(buf, 0, (nint)(*ptr), buf.Length);
-        *sizeloc = (nuint)base.Length;
+        *(*ptr + buf.Length) = 0;
+        *sizeloc = (nuint)buf.Length;
     }
 }
 
