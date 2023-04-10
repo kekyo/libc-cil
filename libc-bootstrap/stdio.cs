@@ -34,9 +34,12 @@ namespace C
 
     public static partial class data
     {
-        public static unsafe readonly FILE* stdin = (FILE*)text.__alloc_obj(Console.OpenStandardInput());
-        public static unsafe readonly FILE* stdout = (FILE*)text.__alloc_obj(Console.OpenStandardOutput());
-        public static unsafe readonly FILE* stderr = (FILE*)text.__alloc_obj(Console.OpenStandardError());
+        public static unsafe readonly FILE** stdin =
+            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardInput()));
+        public static unsafe readonly FILE** stdout =
+            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardOutput()));
+        public static unsafe readonly FILE** stderr =
+            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardError()));
     }
 
     ///////////////////////////////////////////////////////////////////////

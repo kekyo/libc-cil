@@ -76,6 +76,24 @@ public static partial class text
         handle.Free();
     }
 
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe T** __alloc_and_set_field<T>(T* p)
+        where T : unmanaged
+    {
+        var to = (T**)malloc((nuint)sizeof(T*));
+        *to = (T*)p;
+        return to;
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe T* __alloc_and_set_field<T>(in T p)
+        where T : unmanaged
+    {
+        var to = (T*)malloc((nuint)sizeof(T));
+        *to = p;
+        return to;
+    }
+
     ////////////////////////////////////////////////////////////
 
     // They are using Encoding.UTF8 instead of Marshal.StringToHGlobalAnsi().
