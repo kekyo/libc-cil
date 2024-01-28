@@ -7,7 +7,11 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace C;
 
@@ -45,6 +49,71 @@ public static partial class text
     public static unsafe void free(
         void* p) =>
         heap.free(p);
+
+    ///////////////////////////////////////////////////////////////////////
+
+    public static unsafe int posix_spawn(
+        int* pid, sbyte* path, void* file_actions, void* attrp, sbyte** argv, sbyte** envp)
+    {
+        try
+        {
+            var sb = new StringBuilder();
+            while (*argv != (sbyte*)0)
+            {
+                if (sb.Length >= 1)
+                {
+                    sb.Append(' ');
+                }
+                sb.Append(__ngetstr(*argv));
+                argv++;
+            }
+            
+            var psi = new ProcessStartInfo();
+            psi.FileName = "dotnet";
+            psi.Arguments = sb.ToString();
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = true;
+       
+            var p = Process.Start(psi);
+            if (p != null)
+            {
+                *pid = p.Id;
+                return 0;
+            }
+            else
+            {
+                errno = data.ENOMEM;
+                return -1;
+            }
+        }
+        catch (Exception ex)
+        {
+            __set_exception_to_errno(ex);
+            return -1;
+        }
+    }
+
+    public static unsafe int waitpid(int pid, int* stat_loc, int options)
+    {
+        try
+        {
+            var p = Process.GetProcessById(pid);
+            p.WaitForExit();
+            *stat_loc = 0x80;
+            return 0;
+        }
+        catch (ArgumentException)
+        {
+            *stat_loc = 0x80;
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            __set_exception_to_errno(ex);
+            return -1;
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////
 
