@@ -8,12 +8,32 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace C;
+
+public static partial class data
+{
+    public static unsafe sbyte** environ = __getenviron();
+
+    private static unsafe sbyte** __getenviron()
+    {
+        var envs = Environment.GetEnvironmentVariables();
+        var penv = (sbyte**)text.heap.malloc(
+            (nuint)(envs.Count * sizeof(sbyte*)), null, 0);
+        var index = 0;
+        foreach (var entry in envs)
+        {
+            var kv = (DictionaryEntry)entry!;
+            penv[index++] = text.__nstrdup($"{kv.Key}={kv.Value}");
+        }
+        return penv;
+    }
+}
 
 public static partial class text
 {
@@ -40,6 +60,11 @@ public static partial class text
         nuint nmemb, nuint size) =>
         heap.calloc(nmemb, size, null, 0);
 
+    // void *realloc(void *buf, size_t size);
+    public static unsafe void* realloc(
+        void* buf, nuint size) =>
+        heap.realloc(buf, size, null, 0);
+
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe void* __calloc_dbg(
         nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
@@ -52,7 +77,37 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
-    public static unsafe int posix_spawn(
+    // int mkstemp(char *template);
+    public static unsafe int mkstemp(sbyte* template)
+    {
+        var tempPath = __ngetstr(template);
+        if (!tempPath.EndsWith("XXXXXX"))
+        {
+            errno = data.EINVAL;
+            return -1;
+        }
+        tempPath = tempPath.Substring(0, tempPath.Length - 6);
+        try
+        {
+            return fileio.create(tempPath);
+        }
+        catch (Exception ex)
+        {
+            __set_exception_to_errno(ex);
+            return -1;
+        }
+    }
+    
+    ///////////////////////////////////////////////////////////////////////
+
+    // typedef int pid_t;
+    // int posix_spawnp(pid_t *pid,
+    //   const char *path,
+    //   const void *file_actions,
+    //   const void *attrp,
+    //   char *const argv[],
+    //   char *const envp[]);
+    public static unsafe int posix_spawnp(
         int* pid, sbyte* path, void* file_actions, void* attrp, sbyte** argv, sbyte** envp)
     {
         try
@@ -94,6 +149,7 @@ public static partial class text
         }
     }
 
+    // pid_t waitpid(pid_t pid, int *stat_loc, int options);
     public static unsafe int waitpid(int pid, int* stat_loc, int options)
     {
         try
@@ -115,6 +171,23 @@ public static partial class text
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////
+
+    // int atexit(void (*)(void));
+    public static unsafe int atexit(delegate*<void> function)
+    {
+        if (function != null)
+        {
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => function();
+            return 0;
+        }
+        else
+        {
+            errno = data.EINVAL;
+            return -1;
+        }
+    }
+    
     ///////////////////////////////////////////////////////////////////////
 
     // unsigned long strtoul(const char *nptr, char **endptr, int base);

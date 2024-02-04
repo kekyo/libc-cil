@@ -7,6 +7,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -15,7 +16,7 @@ namespace C;
 
 public static partial class text
 {
-    private static class heap
+    internal static class heap
     {
         // https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-debug-heap-details
 
@@ -156,68 +157,149 @@ public static partial class text
                 return null;
             }
 
-            if (heap_check_mode != HeapCheckModes.None)
+            try
             {
-                var number = Interlocked.Increment(ref request_number);
-                if (number == break_number)
+                if (heap_check_mode != HeapCheckModes.None)
                 {
-                    __force_trap();
-                }
-
-                var total_size =
-                    (nuint)sizeof(heap_block_header) + size +
-                    sizeof(ulong);
-
-                var header = (heap_block_header*)Marshal.AllocHGlobal((nint)total_size);
-                if (header == null)
-                {
-                    try_trap_heap(false);
-                    return null;
-                }
-
-                var body = (byte*)(header + 1);
-
-                lock (heap_locker)
-                {
-                    if (heap_check_always)
+                    var number = Interlocked.Increment(ref request_number);
+                    if (number == break_number)
                     {
-                        verify_heap(true);
+                        __force_trap();
                     }
 
-                    var head = heap_block_header.head;
+                    var total_size =
+                        (nuint)sizeof(heap_block_header) + size +
+                        sizeof(ulong);
 
-                    if (head->next->previous != head)
+                    var header = (heap_block_header*)Marshal.AllocHGlobal((nint)total_size);
+                    if (header == null)
                     {
-                        try_trap_heap(true);
+                        try_trap_heap(false);
                         return null;
                     }
 
-                    header->next = head->next;
-                    head->next = header;
+                    var body = (byte*)(header + 1);
 
-                    header->previous = head;
-                    header->next->previous = header;
-
-                    header->filename = filename;
-                    header->line_number = linenumber;
-                    header->size = size;
-                    header->request_number = number;
-                    header->guard_bytes = no_mans_land_bytes;
-
-                    var another_guard_bytes = body + size;
-                    fixed (void* ap = &no_mans_land_bytes)
+                    lock (heap_locker)
                     {
-                        memcpy(another_guard_bytes, ap, sizeof(ulong));
+                        if (heap_check_always)
+                        {
+                            verify_heap(true);
+                        }
+
+                        var head = heap_block_header.head;
+
+                        if (head->next->previous != head)
+                        {
+                            try_trap_heap(true);
+                            return null;
+                        }
+
+                        header->next = head->next;
+                        head->next = header;
+
+                        header->previous = head;
+                        header->next->previous = header;
+
+                        header->filename = filename;
+                        header->line_number = linenumber;
+                        header->size = size;
+                        header->request_number = number;
+                        header->guard_bytes = no_mans_land_bytes;
+
+                        var another_guard_bytes = body + size;
+                        fixed (void* ap = &no_mans_land_bytes)
+                        {
+                            memcpy(another_guard_bytes, ap, sizeof(ulong));
+                        }
+                    }
+
+                    memset(body, 0xcd, size);
+
+                    return body;
+                }
+                else
+                {
+                    return (void*)Marshal.AllocHGlobal((nint)size);
+                }
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return null;
+            }
+        }
+
+        public static unsafe void* realloc(
+            void* p, nuint size, sbyte* filename, int linenumber)
+        {
+            if (size == 0)
+            {
+                __trap();
+                return null;
+            }
+
+            try
+            {
+                if (heap_check_mode != HeapCheckModes.None)
+                {
+                    var number = Interlocked.Increment(ref request_number);
+                    if (number == break_number)
+                    {
+                        __force_trap();
+                    }
+
+                    var total_size =
+                        (nuint)sizeof(heap_block_header) + size +
+                        sizeof(ulong);
+
+                    var old_header = ((heap_block_header*)p) - 1;
+
+                    lock (heap_locker)
+                    {
+                        if (heap_check_always)
+                        {
+                            verify_heap(true);
+                        }
+
+                        var header = (heap_block_header*)Marshal.ReAllocHGlobal((nint)old_header, (nint)total_size);
+                        if (header == null)
+                        {
+                            try_trap_heap(false);
+                            return null;
+                        }
+
+                        if (header != old_header)
+                        {
+                            header->next->previous = header;
+                            header->previous->next = header;
+                        }
+
+                        header->filename = filename;
+                        header->line_number = linenumber;
+                        header->size = size;
+                        header->request_number = number;
+
+                        var body = (byte*)(header + 1);
+
+                        var another_guard_bytes = body + size;
+                        fixed (void* ap = &no_mans_land_bytes)
+                        {
+                            memcpy(another_guard_bytes, ap, sizeof(ulong));
+                        }
+
+                        return body;
                     }
                 }
-
-                memset(body, 0xcd, size);
-
-                return body;
+                else
+                {
+                    return (void*)Marshal.AllocHGlobal((nint)size);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return (void*)Marshal.AllocHGlobal((nint)size);
+                __set_exception_to_errno(ex);
+                return null;
             }
         }
 
