@@ -8,12 +8,33 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace C;
+
+public static partial class data
+{
+    public static unsafe sbyte** environ = __getenviron();
+
+    private static unsafe sbyte** __getenviron()
+    {
+        var envs = Environment.GetEnvironmentVariables();
+        var penv = (sbyte**)text.heap.malloc(
+            (nuint)(envs.Count * sizeof(sbyte*)), null, 0);
+        var index = 0;
+        foreach (var entry in envs)
+        {
+            var kv = (DictionaryEntry)entry!;
+            penv[index++] = text.__nstrdup($"{kv.Key}={kv.Value}");
+        }
+        return penv;
+    }
+}
 
 public static partial class text
 {
@@ -40,6 +61,11 @@ public static partial class text
         nuint nmemb, nuint size) =>
         heap.calloc(nmemb, size, null, 0);
 
+    // void *realloc(void *buf, size_t size);
+    public static unsafe void* realloc(
+        void* buf, nuint size) =>
+        heap.realloc(buf, size, null, 0);
+
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe void* __calloc_dbg(
         nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
@@ -52,29 +78,105 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
-    public static unsafe int posix_spawn(
+    private static readonly char[] __gettemp_ch =
+    {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    };
+    
+    private static string __gettemp_postfix()
+    {
+        // "0-9a-zA-Z": 10 + 26 + 26 = 62
+        var va = new byte[6];
+        new Random().NextBytes(va);
+        var sb = new StringBuilder();
+        foreach (var v in va)
+        {
+            sb.Append(__gettemp_ch[v % 62]);
+        }
+        return sb.ToString();
+    }
+    
+    // int mkstemp(char *template);
+    public static unsafe int mkstemp(sbyte* template)
+    {
+        var tempPath = __ngetstr(template);
+        if (!tempPath.EndsWith("XXXXXX"))
+        {
+            errno = data.EINVAL;
+            return -1;
+        }
+
+        var path = tempPath.Substring(0, tempPath.Length - 6);
+
+        var count = 0;
+        while (true)
+        {
+            var postfix = __gettemp_postfix();
+            try
+            {
+                var fd = fileio.create(path + postfix);
+                var position = strlen(template) - (nuint)postfix.Length;
+                for (var index = 0; index < postfix.Length; index++)
+                {
+                    template[position + (nuint)index] = (sbyte)postfix[index];
+                }
+                return fd;
+            }
+            catch (Exception ex)
+            {
+                if (count >= 10)
+                {
+                    __set_exception_to_errno(ex);
+                    return -1;
+                }
+                count++;
+            }
+        }
+    }
+    
+    ///////////////////////////////////////////////////////////////////////
+
+    // typedef int pid_t;
+    // int posix_spawnp(pid_t *pid,
+    //   const char *path,
+    //   const void *file_actions,
+    //   const void *attrp,
+    //   char *const argv[],
+    //   char *const envp[]);
+    public static unsafe int posix_spawnp(
         int* pid, sbyte* path, void* file_actions, void* attrp, sbyte** argv, sbyte** envp)
     {
         try
         {
+            // HACK: Cursed specification...
+            // https://stackoverflow.com/questions/70122718/how-to-get-separate-arguments-from-single-arguments-string-like-processstartinfo
+            // https://github.com/dotnet/runtime/blob/dfcbcb450bd67e091ae697e788a8c7a88eb8cbec/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L853
             var sb = new StringBuilder();
-            while (*argv != (sbyte*)0)
+            if (*argv != (sbyte*)0)
             {
-                if (sb.Length >= 1)
-                {
-                    sb.Append(' ');
-                }
-                sb.Append(__ngetstr(*argv));
                 argv++;
+                while (*argv != (sbyte*)0)
+                {
+                    if (sb.Length >= 1)
+                    {
+                        sb.Append(' ');
+                    }
+
+                    var arg = __ngetstr(*argv);
+                    sb.Append($"\"{arg.Replace("\"", "\"\"")}\"");
+                    argv++;
+                }
             }
-            
+
             var psi = new ProcessStartInfo();
-            psi.FileName = "dotnet";
+            psi.FileName = __ngetstr(path);
             psi.Arguments = sb.ToString();
             psi.WindowStyle = ProcessWindowStyle.Hidden;
             psi.CreateNoWindow = true;
-            psi.UseShellExecute = true;
-       
+            psi.UseShellExecute = false;
+
             var p = Process.Start(psi);
             if (p != null)
             {
@@ -87,13 +189,20 @@ public static partial class text
                 return -1;
             }
         }
+        // Invalid program format
+        catch (Win32Exception)
+        {
+            errno = data.EACCES;
+            return -1;
+        }
         catch (Exception ex)
         {
-            __set_exception_to_errno(ex);
+             __set_exception_to_errno(ex);
             return -1;
         }
     }
 
+    // pid_t waitpid(pid_t pid, int *stat_loc, int options);
     public static unsafe int waitpid(int pid, int* stat_loc, int options)
     {
         try
@@ -115,6 +224,23 @@ public static partial class text
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////
+
+    // int atexit(void (*)(void));
+    public static unsafe int atexit(delegate*<void> function)
+    {
+        if (function != null)
+        {
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => function();
+            return 0;
+        }
+        else
+        {
+            errno = data.EINVAL;
+            return -1;
+        }
+    }
+    
     ///////////////////////////////////////////////////////////////////////
 
     // unsigned long strtoul(const char *nptr, char **endptr, int base);

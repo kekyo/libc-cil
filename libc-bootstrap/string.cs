@@ -119,6 +119,16 @@ public static partial class text
         return len;
     }
 
+    // char *strdup(char *p);
+    public static unsafe sbyte* strdup(sbyte* p)
+    {
+        var len = strlen(p);
+        var buf = (sbyte*)malloc(len + 1);
+        memcpy(buf, p, len);
+        *(buf + len) = 0;
+        return buf;
+    }
+
     // char *strndup(const char *p, size_t n);
     public static unsafe sbyte* strndup(sbyte* p, nuint n)
     {
@@ -146,6 +156,22 @@ public static partial class text
             s++;
         }
         return null;
+    }
+
+    // char *strrchr(const char *s, int c);
+    public static unsafe sbyte* strrchr(sbyte* s, int c)
+    {
+        var c_ = (sbyte)c;
+        sbyte* ls = null;
+        while (*s != 0)
+        {
+            if (*s == c_)
+            {
+                ls = s;
+            }
+            s++;
+        }
+        return ls;
     }
 
     // char *strstr(const char *haystack, const char *needle);
