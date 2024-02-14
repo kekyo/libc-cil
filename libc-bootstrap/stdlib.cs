@@ -101,38 +101,46 @@ public static partial class text
     // int mkstemp(char *template);
     public static unsafe int mkstemp(sbyte* template)
     {
-        var tempPath = __ngetstr(template);
-        if (!tempPath.EndsWith("XXXXXX"))
+        try
         {
-            errno = data.EINVAL;
-            return -1;
+            var tempPath = __ngetstr(template)!;
+            if (!tempPath.EndsWith("XXXXXX"))
+            {
+                errno = data.EINVAL;
+                return -1;
+            }
+
+            var path = tempPath.Substring(0, tempPath.Length - 6);
+
+            var count = 0;
+            while (true)
+            {
+                var postfix = __gettemp_postfix();
+                try
+                {
+                    var fd = fileio.create(path + postfix);
+                    var position = strlen(template) - (nuint)postfix.Length;
+                    for (var index = 0; index < postfix.Length; index++)
+                    {
+                        template[position + (nuint)index] = (sbyte)postfix[index];
+                    }
+                    return fd;
+                }
+                catch (Exception ex)
+                {
+                    if (count >= 10)
+                    {
+                        __set_exception_to_errno(ex);
+                        return -1;
+                    }
+                    count++;
+                }
+            }
         }
-
-        var path = tempPath.Substring(0, tempPath.Length - 6);
-
-        var count = 0;
-        while (true)
+        catch (Exception ex)
         {
-            var postfix = __gettemp_postfix();
-            try
-            {
-                var fd = fileio.create(path + postfix);
-                var position = strlen(template) - (nuint)postfix.Length;
-                for (var index = 0; index < postfix.Length; index++)
-                {
-                    template[position + (nuint)index] = (sbyte)postfix[index];
-                }
-                return fd;
-            }
-            catch (Exception ex)
-            {
-                if (count >= 10)
-                {
-                    __set_exception_to_errno(ex);
-                    return -1;
-                }
-                count++;
-            }
+            __set_exception_to_errno(ex);
+            return -1;
         }
     }
     
@@ -164,14 +172,19 @@ public static partial class text
                         sb.Append(' ');
                     }
 
-                    var arg = __ngetstr(*argv);
+                    var arg = __ngetstr(*argv)!;
                     sb.Append($"\"{arg.Replace("\"", "\"\"")}\"");
                     argv++;
                 }
             }
 
+            var fileName = __ngetstr(path)!;
+#if DEBUG            
+            Console.WriteLine(
+                $"spawn: {fileName} {sb}");
+#endif
             var psi = new ProcessStartInfo();
-            psi.FileName = __ngetstr(path);
+            psi.FileName = fileName;
             psi.Arguments = sb.ToString();
             psi.WindowStyle = ProcessWindowStyle.Hidden;
             psi.CreateNoWindow = true;

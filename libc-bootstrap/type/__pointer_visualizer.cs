@@ -37,7 +37,7 @@ public sealed unsafe class __pointer_visualizer
             try
             {
                 return this.ptr != null ?
-                    text.__ngetstrn((sbyte*)this.ptr, max_length) :
+                    text.__ngetstrn((sbyte*)this.ptr, max_length)! :
                     "(null)";
             }
             catch (Exception ex)

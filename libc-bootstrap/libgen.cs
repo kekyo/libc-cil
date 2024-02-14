@@ -15,6 +15,7 @@ namespace C;
 public static partial class text
 {
     private static nint __basename = 0;
+    private static nint __dirname = 0;
     
     // char *basename(char *path);
     public static unsafe sbyte* basename(sbyte* path)
@@ -28,5 +29,24 @@ public static partial class text
             heap.free((void*)lpbn);
         }
         return pbn;
+    }
+    
+    // char *dirname(char *path);
+    public static unsafe sbyte* dirname(sbyte* path)
+    {
+        var p = __ngetstr(path);
+        var dn = Path.GetDirectoryName(p) switch
+        {
+            null => ".",
+            "" => ".",
+            var n => n,
+        };
+        var pdn = __nstrdup(dn);
+        var lpdn = (nint)Interlocked.Exchange(ref __dirname, (nint)pdn);
+        if (lpdn != 0)
+        {
+            heap.free((void*)lpdn);
+        }
+        return pdn;
     }
 }
