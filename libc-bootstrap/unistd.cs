@@ -19,7 +19,7 @@ public static partial class text
     {
         try
         {
-            var pn = __ngetstr(pathname);
+            var pn = __ngetstr(pathname)!;
             File.Delete(pn);
         }
         catch (Exception ex)
@@ -41,6 +41,30 @@ public static partial class text
                 return -1;
             }
             return 0;
+        }
+        catch (Exception ex)
+        {
+            __set_exception_to_errno(ex);
+            return -1;
+        }
+    }
+    
+    // int stat(char *pathname, struct stat *statbuf);
+    public static unsafe int stat(sbyte* pathname, void* statbuf)
+    {
+        try
+        {
+            // HACK: Only checking exists a file.
+            var pn = __ngetstr(pathname);
+            if (File.Exists(pn))
+            {
+                return 0;
+            }
+            else
+            {
+                errno = data.ENOENT;
+                return -1;
+            }
         }
         catch (Exception ex)
         {

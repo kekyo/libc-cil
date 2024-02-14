@@ -328,20 +328,20 @@ public static partial class text
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static void __set_exception_to_errno(Exception ex) =>
-        __errno = Environment.OSVersion.Platform == PlatformID.Win32NT ?
-	        ex switch
-	        {
-	            ArgumentException _ => data.EINVAL,
-	            ArithmeticException _ => data.ERANGE,
-	            OutOfMemoryException _ => data.ENOMEM,
-	            PathTooLongException _ => data.ENAMETOOLONG,
-	            FileNotFoundException _ => data.ENOENT,
-	            DirectoryNotFoundException _ => data.ENOENT,
-	            UnauthorizedAccessException _ => data.EPERM,
-	            IOException _ => data.EIO,
-	            _ => Marshal.GetHRForException(ex),
-	        } :
-	        Marshal.GetHRForException(ex);
+        __errno = ex switch
+        {
+            ArgumentException _ => data.EINVAL,
+            ArithmeticException _ => data.ERANGE,
+            OutOfMemoryException _ => data.ENOMEM,
+            AccessViolationException _ => data.EFAULT,
+            NullReferenceException _ => data.EFAULT,
+            PathTooLongException _ => data.ENAMETOOLONG,
+            FileNotFoundException _ => data.ENOENT,
+            DirectoryNotFoundException _ => data.ENOENT,
+            UnauthorizedAccessException _ => data.EPERM,
+            IOException _ => data.EIO,
+            _ => Marshal.GetHRForException(ex),
+        };
 
     // char *strerror(int errnum);
     public static unsafe sbyte* strerror(int errnum)

@@ -90,7 +90,7 @@ namespace C
                         s = FileShare.Read;
                         break;
                 }
-                var path = __ngetstr(pathname);
+                var path = __ngetstr(pathname)!;
                 var fs = new FileStream(path, m, a, s);
                 return (FILE*)__alloc_obj(fs);
             }

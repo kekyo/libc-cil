@@ -101,8 +101,12 @@ public static partial class text
     // And Marshal.StringToCoTaskMemUTF8 is not available on older .NET.
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe sbyte* __nstrdup(string str)
+    public static unsafe sbyte* __nstrdup(string? str)
     {
+        if (str == null)
+        {
+            return (sbyte*)0;
+        }
         var bytes = Encoding.UTF8.GetBytes(str);
         fixed (byte* p = &bytes[0])
         {
@@ -115,8 +119,12 @@ public static partial class text
     }
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe string __ngetstr(sbyte* str)
+    public static unsafe string? __ngetstr(sbyte* str)
     {
+        if (str == (sbyte*)0)
+        {
+            return null;
+        }
         var len = strlen(str);
         var buf = new byte[len];
         Marshal.Copy((nint)str, buf, 0, (int)len);
@@ -124,8 +132,12 @@ public static partial class text
     }
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe string __ngetstrn(sbyte* str, nuint len)
+    public static unsafe string? __ngetstrn(sbyte* str, nuint len)
     {
+        if (str == (sbyte*)0)
+        {
+            return null;
+        }
         var l = strlen(str);
         var lr = Math.Min((uint)l, (uint)len);
         var buf = new byte[lr];
