@@ -62,15 +62,20 @@ public static partial class text
         nuint nmemb, nuint size) =>
         heap.calloc(nmemb, size, null, 0);
 
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void* __calloc_dbg(
+        nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
+        heap.calloc(nmemb, size, filename, linenumber);
+
     // void *realloc(void *buf, size_t size);
     public static unsafe void* realloc(
         void* buf, nuint size) =>
         heap.realloc(buf, size, null, 0);
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe void* __calloc_dbg(
-        nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
-        heap.calloc(nmemb, size, filename, linenumber);
+    public static unsafe void* __realloc_dbg(
+        void* buf, nuint size, sbyte* filename, int linenumber) =>
+        heap.realloc(buf, size, filename, linenumber);
 
     // void free(void *p);
     public static unsafe void free(
@@ -180,9 +185,9 @@ public static partial class text
             }
 
             var fileName = __ngetstr(path)!;
-#if DEBUG            
+#if false            
             Console.WriteLine(
-                $"spawn: {fileName} {sb}");
+                $"posix_spawnp: {fileName} {sb}");
 #endif
             
             var parentIn = fileio.get_stream(0);
