@@ -1,4 +1,4 @@
-﻿/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
 //
 // libc-cil - libc implementation on CIL, part of chibicc-cil
 // Copyright (c) Kouji Matsui(@kozy_kekyo, @kekyo @mastodon.cloud)
@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace C;
 
@@ -183,16 +184,83 @@ public static partial class text
             Console.WriteLine(
                 $"spawn: {fileName} {sb}");
 #endif
+            
+            var parentIn = fileio.get_stream(0);
+            
             var psi = new ProcessStartInfo();
             psi.FileName = fileName;
             psi.Arguments = sb.ToString();
             psi.WindowStyle = ProcessWindowStyle.Hidden;
             psi.CreateNoWindow = true;
             psi.UseShellExecute = false;
+            psi.RedirectStandardInput = parentIn != null;
+            //psi.RedirectStandardOutput = true;
+            //psi.RedirectStandardError = true;
 
             var p = Process.Start(psi);
             if (p != null)
             {
+                if (parentIn != null)
+                {
+                    var transferThread = new Thread(() =>
+                    {
+                        using var exited = new ManualResetEvent(false);
+                        p.EnableRaisingEvents = true;
+                        p.Exited += (_, _) => exited.Set();
+
+                        var childIn = p.StandardInput.BaseStream;
+
+                        var parentInBuffer = new byte[4096];
+                        var parentInAR = parentIn.BeginRead(
+                            parentInBuffer, 0, parentInBuffer.Length, null!, null!);
+
+                        while (true)
+                        {
+                            var waitHandles = new WaitHandle[]
+                            {
+                                exited, parentInAR.AsyncWaitHandle,
+                            };
+                    
+                            var r = WaitHandle.WaitAny(waitHandles);
+                            if (r == 0)
+                            {
+                                break;
+                            }
+
+                            try
+                            {
+                                if (parentInAR.IsCompleted)
+                                {
+                                    var length = parentIn.EndRead(parentInAR);
+                                    if (length >= 1)
+                                    {
+                                        childIn.Write(parentInBuffer, 0, length);
+                                        parentInAR = parentIn.BeginRead(
+                                            parentInBuffer, 0, parentInBuffer.Length, null!, null!);
+                                    }
+                                    else
+                                    {
+                                        childIn.Close();
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                            }
+                        }
+
+                        try
+                        {
+                            parentIn.EndRead(parentInAR);
+                        }
+                        catch
+                        {
+                        }
+                    });
+                    transferThread.IsBackground = true;
+                    transferThread.Start();
+                }
+                
                 *pid = p.Id;
                 return 0;
             }

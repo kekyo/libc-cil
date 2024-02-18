@@ -29,8 +29,16 @@ public static partial class text
                 files.Add(2, Console.OpenStandardError());
             }
         }
+
+        public static Stream? get_stream(int fd)
+        {
+            lock (files)
+            {
+                return files.TryGetValue(fd, out var s) ? s : null;
+            }
+        }
                 
-        private static unsafe int Register(Stream s)
+        public static unsafe int register_stream(Stream s)
         {
             int fd;
             lock (files)
@@ -51,19 +59,19 @@ public static partial class text
         public static unsafe int force_create(string path)
         {
             var f = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
-            return Register(f);
+            return register_stream(f);
         }
     
         public static unsafe int create(string path)
         {
             var f = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
-            return Register(f);
+            return register_stream(f);
         }
       
         public static unsafe int open(string path)
         {
             var f = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
-            return Register(f);
+            return register_stream(f);
         }
       
         public static bool close(int fd)
@@ -73,6 +81,7 @@ public static partial class text
                 if (files.TryGetValue(fd, out var f))
                 {
                     files.Remove(fd);
+                    descriptors.Push(fd);
                     f.Dispose();
                     return true;
                 }

@@ -215,7 +215,7 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
+                var s = to_stream(fp)!;
                 var len = 0;
                 stdio_impl.vwrprintf((p, l) =>
                 {
