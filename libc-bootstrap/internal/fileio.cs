@@ -28,6 +28,20 @@ public static partial class text
                 files.Add(1, Console.OpenStandardOutput());
                 files.Add(2, Console.OpenStandardError());
             }
+
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                lock (files)
+                {
+                    foreach (var stream in files.Values)
+                    {
+                        if (stream.CanWrite)
+                        {
+                            stream.Flush();
+                        }
+                    }
+                }
+            };
         }
 
         public static Stream? get_stream(int fd)
@@ -38,7 +52,7 @@ public static partial class text
             }
         }
                 
-        public static unsafe int register_stream(Stream s)
+        public static int register_stream(Stream s)
         {
             int fd;
             lock (files)
@@ -56,19 +70,19 @@ public static partial class text
             return fd;
         }
 
-        public static unsafe int force_create(string path)
+        public static int force_create(string path)
         {
             var f = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
             return register_stream(f);
         }
     
-        public static unsafe int create(string path)
+        public static int create(string path)
         {
             var f = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
             return register_stream(f);
         }
       
-        public static unsafe int open(string path)
+        public static int open(string path)
         {
             var f = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
             return register_stream(f);
