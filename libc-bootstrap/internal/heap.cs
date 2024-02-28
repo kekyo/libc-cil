@@ -44,7 +44,7 @@ public static partial class text
 
         private unsafe struct heap_block_header
         {
-            public static unsafe readonly heap_block_header* head;
+            public static readonly heap_block_header* head;
 
             static heap_block_header()
             {
@@ -84,9 +84,7 @@ public static partial class text
         private static unsafe bool verify_heap(bool force)
         {
             var head = heap_block_header.head;
-
             var header = head->next;
-            var count = 0;
 
             while (header != head)
             {
@@ -126,7 +124,6 @@ public static partial class text
                 }
 
                 header = header->next;
-                count++;
             }
 
             return true;
