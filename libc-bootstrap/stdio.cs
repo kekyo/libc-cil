@@ -221,6 +221,8 @@ namespace C
             private const sbyte __minus = (sbyte)'-';
             private const sbyte __zero = (sbyte)'0';
             private const sbyte __asterisk = (sbyte)'*';
+            
+            private static readonly byte[] __null = Encoding.UTF8.GetBytes("(null)");
 
             private enum __modifiers
             {
@@ -387,6 +389,13 @@ namespace C
                             if (after_pads)
                             {
                                 output_pads(wr, field_width, len, zero_pads);
+                            }
+                        }
+                        else
+                        {
+                            fixed (void* p = &__null[0])
+                            {
+                                wr((sbyte*)p, (nuint)__null.Length);
                             }
                         }
                         fmt++;
