@@ -220,6 +220,9 @@ namespace C
             private const sbyte __exp = (sbyte)'e';
             private const sbyte __minus = (sbyte)'-';
             private const sbyte __zero = (sbyte)'0';
+            private const sbyte __asterisk = (sbyte)'*';
+            
+            private static readonly byte[] __null = Encoding.UTF8.GetBytes("(null)");
 
             private enum __modifiers
             {
@@ -269,12 +272,13 @@ namespace C
 
                     fmt++;
 
-                    // Precision: %- %1 %.
+                    // Precision: %- %1 %* %.
                     nuint field_width = 0;
                     nuint fraction_width = 0;
                     var after_pads = false;
                     var zero_pads = false;
-                    if (isdigit(*fmt) != 0 || *fmt == __dot || *fmt == __minus)
+                    var trim = false;
+                    if (isdigit(*fmt) != 0 || *fmt == __asterisk || *fmt == __dot || *fmt == __minus)
                     {
                         // %-
                         if (*fmt == __minus)  // -
@@ -298,14 +302,31 @@ namespace C
                             }
                             while (isdigit(*fmt) != 0);
                         }
+                        // %*
+                        else if (*fmt == __asterisk)
+                        {
+                            field_width = (nuint)va_arg<int>(&ap);
+                            fmt++;
+                        }
                         // %.
-                        if (*fmt == __dot)
+                        else if (*fmt == __dot)
                         {
                             fmt++;
                             // %.12
-                            while (isdigit(*fmt) != 0)
+                            if (isdigit(*fmt) != 0)
                             {
-                                fraction_width = fraction_width * 10 + (byte)*fmt - 0x30;
+                                do
+                                {
+                                    fraction_width = fraction_width * 10 + (byte)*fmt - 0x30;
+                                    fmt++;
+                                }
+                                while (isdigit(*fmt) != 0);
+                            }
+                            // %.*
+                            else if (*fmt == __asterisk)
+                            {
+                                field_width = (nuint)va_arg<int>(&ap);
+                                trim = true;
                                 fmt++;
                             }
                         }
@@ -344,10 +365,21 @@ namespace C
                         {
                             var p = ps;
                             len = 0;
-                            while (*p != 0)
+                            if (trim)
                             {
-                                p++;
-                                len++;
+                                while (*p != 0 && len < field_width)
+                                {
+                                    p++;
+                                    len++;
+                                }
+                            }
+                            else
+                            {
+                                while (*p != 0)
+                                {
+                                    p++;
+                                    len++;
+                                }
                             }
                             if (!after_pads)
                             {
@@ -357,6 +389,13 @@ namespace C
                             if (after_pads)
                             {
                                 output_pads(wr, field_width, len, zero_pads);
+                            }
+                        }
+                        else
+                        {
+                            fixed (void* p = &__null[0])
+                            {
+                                wr((sbyte*)p, (nuint)__null.Length);
                             }
                         }
                         fmt++;

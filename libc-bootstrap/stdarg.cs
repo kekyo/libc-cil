@@ -8,6 +8,7 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.ConstrainedExecution;
@@ -109,6 +110,7 @@ namespace C
                 var v = value switch
                 {
                     float f32 => (double)f32,   // ISO/IEC 9899 6.5.2.2 Function calls - Paragraph 6
+                    Enum e => Convert.ChangeType(e, e.GetTypeCode()),
                     _ => value,
                 };
 
@@ -181,7 +183,7 @@ namespace C
             new(count);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void __va_arglist_add(__va_arglist ap, object value) =>
+        public static void __va_arglist_add(__va_arglist ap, object? value) =>
             ap.add(value);
 
         [EditorBrowsable(EditorBrowsableState.Never)]

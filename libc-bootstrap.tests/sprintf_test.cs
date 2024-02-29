@@ -42,6 +42,30 @@ public sealed class sprintf_test
     }
 
     [Test]
+    public unsafe void string_with_prec1()
+    {
+        __obj_holder str = "hell";
+        var actual = sprintf("%*s", 5, (nint)str.get());
+        Assert.AreEqual(" hell", actual);
+    }
+
+    [Test]
+    public unsafe void string_with_prec2()
+    {
+        __obj_holder str = "hello_world";
+        var actual = sprintf("%*s", 5, (nint)str.get());
+        Assert.AreEqual("hello_world", actual);
+    }
+
+    [Test]
+    public unsafe void string_with_prec_and_trim()
+    {
+        __obj_holder str = "hello_world";
+        var actual = sprintf("%.*s", 5, (nint)str.get());
+        Assert.AreEqual("hello", actual);
+    }
+
+    [Test]
     public unsafe void @char()
     {
         var actual = sprintf("%c", (sbyte)'a');
