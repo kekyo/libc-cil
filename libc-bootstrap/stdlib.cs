@@ -239,6 +239,23 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
+    // char *getenv(char *name);
+    public static unsafe sbyte* getenv(sbyte* name)
+    {
+        var len = strlen(name);
+        var ce = data.environ;
+        while (*ce != null)
+        {
+            if (strncmp(*ce, name, len) == 0) {
+                return (*ce) + len + 1;  // +1: '='
+            }
+            ce++;
+        }
+        return null;
+    }
+
+    ///////////////////////////////////////////////////////////////////////
+
     // int atexit(void (*)(void));
     public static unsafe int atexit(delegate*<void> function)
     {
