@@ -65,6 +65,28 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
+    // char *strncpy(char *dst, char void *src, size_t n);
+    public static unsafe sbyte* strncpy(sbyte* dst, sbyte* src, nuint n)
+    {
+        var r = n;
+        var d = (byte*)dst;
+        var s = (byte*)src;
+        while (r > 0)
+        {
+            r--;
+            *d = *s;
+            if (*s == 0)
+            {
+                d++;
+                memset(d, 0, r);
+                break;
+            }
+            d++;
+            s++;
+        }
+        return dst;
+    }
+
     // int strcmp(const char *s1, const char *s2);
     public static unsafe int strcmp(sbyte* s1, sbyte* s2)
     {
