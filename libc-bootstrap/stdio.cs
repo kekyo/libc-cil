@@ -35,23 +35,33 @@ namespace C
     public static partial class data
     {
         public static unsafe readonly FILE** stdin =
-            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardInput()));
+            text.__alloc_and_set_field(text.to_fileptr(0));
         public static unsafe readonly FILE** stdout =
-            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardOutput()));
+            text.__alloc_and_set_field(text.to_fileptr(1));
         public static unsafe readonly FILE** stderr =
-            text.__alloc_and_set_field((FILE*)text.__alloc_obj(Console.OpenStandardError()));
+            text.__alloc_and_set_field(text.to_fileptr(2));
     }
 
     ///////////////////////////////////////////////////////////////////////
 
     public static partial class text
     {
+        internal static unsafe FILE* to_fileptr(int fd) =>
+            (FILE*)(0x80000000U | fd);
+
+        private static unsafe int to_fd(FILE* fp) =>
+            (int)((nuint)fp & 0x7fffffffU);
+        
+        private static unsafe Stream? to_stream(FILE* fp) =>
+            fileio.get_stream(to_fd(fp));
+        
         // int printf(char *fmt, ...);
         public static unsafe int printf(sbyte* fmt, __va_arglist args)
         {
             var ap = va_start(args);
             var len = stdio_impl.isprintf(out var str, fmt, ap);
-            Console.Write(str);
+            Console.Out.Write(str);
+            Console.Out.Flush();
             return len;
         }
 
@@ -74,25 +84,10 @@ namespace C
         {
             try
             {
-                FileMode m;
-                FileAccess a;
-                FileShare s;
-                switch (__ngetstr(mode))
-                {
-                    case "w":
-                        m = FileMode.Create;
-                        a = FileAccess.ReadWrite;
-                        s = FileShare.None;
-                        break;
-                    default:
-                        m = FileMode.Open;
-                        a = FileAccess.Read;
-                        s = FileShare.Read;
-                        break;
-                }
                 var path = __ngetstr(pathname)!;
-                var fs = new FileStream(path, m, a, s);
-                return (FILE*)__alloc_obj(fs);
+                var fd = __ngetstr(mode) == "w" ?
+                    fileio.force_create(path) : fileio.open(path);
+                return to_fileptr(fd);
             }
             catch (Exception ex)
             {
@@ -107,7 +102,8 @@ namespace C
             try
             {
                 var ms = new __memory_stream(ptr, sizeloc);
-                return (FILE*)__alloc_obj(ms);
+                var fd = fileio.register_stream(ms);
+                return to_fileptr(fd);
             }
             catch (Exception ex)
             {
@@ -121,7 +117,7 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
+                var s = to_stream(fp)!;
                 var buf = new byte[size * nmemb];
                 var read = s.Read(buf, 0, buf.Length);
                 Marshal.Copy(buf, 0, (nint)ptr, read);
@@ -139,9 +135,9 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
+                var s = to_stream(fp)!;
                 var buf = new byte[size * nmemb];
-                Marshal.Copy((IntPtr)ptr, buf, 0, buf.Length);
+                Marshal.Copy((nint)ptr, buf, 0, buf.Length);
                 s.Write(buf, 0, buf.Length);
                 return nmemb;
             }
@@ -157,7 +153,7 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
+                var s = to_stream(fp)!;
                 s.Flush();
                 return 0;
             }
@@ -173,9 +169,8 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
-                s.Close();
-                __release_obj(fp);
+                var fd = to_fd(fp);
+                fileio.close(fd);
                 return 0;
             }
             catch (Exception ex)
@@ -190,7 +185,7 @@ namespace C
         {
             try
             {
-                var s = (Stream)__get_obj(fp)!;
+                var s = to_stream(fp)!;
                 s.WriteByte((byte)c);
                 return 0;
             }

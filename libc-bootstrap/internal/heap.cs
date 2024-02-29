@@ -1,4 +1,4 @@
-﻿/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
 //
 // libc-cil - libc implementation on CIL, part of chibicc-cil
 // Copyright (c) Kouji Matsui(@kozy_kekyo, @kekyo @mastodon.cloud)
@@ -233,6 +233,11 @@ public static partial class text
         public static unsafe void* realloc(
             void* p, nuint size, sbyte* filename, int linenumber)
         {
+            if (p == null)
+            {
+                return malloc(size, filename, linenumber);
+            }
+            
             if (size == 0)
             {
                 __trap();
@@ -293,7 +298,7 @@ public static partial class text
                 }
                 else
                 {
-                    return (void*)Marshal.AllocHGlobal((nint)size);
+                    return (void*)Marshal.ReAllocHGlobal((nint)p, (nint)size);
                 }
             }
             catch (Exception ex)

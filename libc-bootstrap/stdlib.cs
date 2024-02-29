@@ -1,4 +1,4 @@
-﻿/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
 //
 // libc-cil - libc implementation on CIL, part of chibicc-cil
 // Copyright (c) Kouji Matsui(@kozy_kekyo, @kekyo @mastodon.cloud)
@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace C;
 
@@ -61,15 +62,20 @@ public static partial class text
         nuint nmemb, nuint size) =>
         heap.calloc(nmemb, size, null, 0);
 
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void* __calloc_dbg(
+        nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
+        heap.calloc(nmemb, size, filename, linenumber);
+
     // void *realloc(void *buf, size_t size);
     public static unsafe void* realloc(
         void* buf, nuint size) =>
         heap.realloc(buf, size, null, 0);
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe void* __calloc_dbg(
-        nuint nmemb, nuint size, sbyte* filename, int linenumber) =>
-        heap.calloc(nmemb, size, filename, linenumber);
+    public static unsafe void* __realloc_dbg(
+        void* buf, nuint size, sbyte* filename, int linenumber) =>
+        heap.realloc(buf, size, filename, linenumber);
 
     // void free(void *p);
     public static unsafe void free(
@@ -179,20 +185,87 @@ public static partial class text
             }
 
             var fileName = __ngetstr(path)!;
-#if DEBUG            
+#if false            
             Console.WriteLine(
-                $"spawn: {fileName} {sb}");
+                $"posix_spawnp: {fileName} {sb}");
 #endif
+            
+            var parentIn = fileio.get_stream(0);
+            
             var psi = new ProcessStartInfo();
             psi.FileName = fileName;
             psi.Arguments = sb.ToString();
             psi.WindowStyle = ProcessWindowStyle.Hidden;
             psi.CreateNoWindow = true;
             psi.UseShellExecute = false;
+            psi.RedirectStandardInput = parentIn != null;
+            //psi.RedirectStandardOutput = true;
+            //psi.RedirectStandardError = true;
 
             var p = Process.Start(psi);
             if (p != null)
             {
+                if (parentIn != null)
+                {
+                    var transferThread = new Thread(() =>
+                    {
+                        using var exited = new ManualResetEvent(false);
+                        p.EnableRaisingEvents = true;
+                        p.Exited += (_, _) => exited.Set();
+
+                        var childIn = p.StandardInput.BaseStream;
+
+                        var parentInBuffer = new byte[4096];
+                        var parentInAR = parentIn.BeginRead(
+                            parentInBuffer, 0, parentInBuffer.Length, null!, null!);
+
+                        while (true)
+                        {
+                            var waitHandles = new WaitHandle[]
+                            {
+                                exited, parentInAR.AsyncWaitHandle,
+                            };
+                    
+                            var r = WaitHandle.WaitAny(waitHandles);
+                            if (r == 0)
+                            {
+                                break;
+                            }
+
+                            try
+                            {
+                                if (parentInAR.IsCompleted)
+                                {
+                                    var length = parentIn.EndRead(parentInAR);
+                                    if (length >= 1)
+                                    {
+                                        childIn.Write(parentInBuffer, 0, length);
+                                        parentInAR = parentIn.BeginRead(
+                                            parentInBuffer, 0, parentInBuffer.Length, null!, null!);
+                                    }
+                                    else
+                                    {
+                                        childIn.Close();
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                            }
+                        }
+
+                        try
+                        {
+                            parentIn.EndRead(parentInAR);
+                        }
+                        catch
+                        {
+                        }
+                    });
+                    transferThread.IsBackground = true;
+                    transferThread.Start();
+                }
+                
                 *pid = p.Id;
                 return 0;
             }
@@ -235,6 +308,23 @@ public static partial class text
             __set_exception_to_errno(ex);
             return -1;
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////
+
+    // char *getenv(char *name);
+    public static unsafe sbyte* getenv(sbyte* name)
+    {
+        var len = strlen(name);
+        var ce = data.environ;
+        while (*ce != null)
+        {
+            if (strncmp(*ce, name, len) == 0) {
+                return (*ce) + len + 1;  // +1: '='
+            }
+            ce++;
+        }
+        return null;
     }
 
     ///////////////////////////////////////////////////////////////////////
