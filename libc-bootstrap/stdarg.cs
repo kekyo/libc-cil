@@ -201,7 +201,7 @@ namespace C
         {
             var pbuf = buf;
             nuint len = 0;
-            stdio_impl.vwrprintf((p, l) =>
+            stdio.vwrprintf((p, l) =>
             {
                 memcpy(pbuf, p, l);
                 pbuf += l;
@@ -219,7 +219,7 @@ namespace C
             {
                 var s = to_stream(fp)!;
                 var len = 0;
-                stdio_impl.vwrprintf((p, l) =>
+                stdio.vwrprintf((p, l) =>
                 {
                     while (l > 0)
                     {
