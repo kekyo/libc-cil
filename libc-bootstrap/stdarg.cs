@@ -36,8 +36,8 @@ namespace C
             {
                 if (args.Length >= 1)
                 {
-                    this.arg_elems = (__va_arg_elem*)text.malloc(
-                        (nuint)sizeof(__va_arg_elem) * (nuint)args.Length);
+                    this.arg_elems = (__va_arg_elem*)Marshal.AllocHGlobal(
+                        sizeof(__va_arg_elem) * args.Length);
                     foreach (var arg in args)
                     {
                         this.add(arg);
@@ -49,8 +49,8 @@ namespace C
             {
                 if (count >= 1)
                 {
-                    this.arg_elems = (__va_arg_elem*)text.malloc(
-                        (nuint)sizeof(__va_arg_elem) * (nuint)count);
+                    this.arg_elems = (__va_arg_elem*)Marshal.AllocHGlobal(
+                        sizeof(__va_arg_elem) * count);
                 }
             }
 
@@ -67,13 +67,13 @@ namespace C
                             {
                                 if (arg_elem->ptr == null)
                                 {
-                                    text.__force_trap();
+                                    text.__force_trap(null, 0);
                                 }
 
                                 var handle = GCHandle.FromIntPtr(arg_elem->handle_ptr);
                                 if (!handle.IsAllocated)
                                 {
-                                    text.__force_trap();
+                                    text.__force_trap(null, 0);
                                 }
                                 else
                                 {
@@ -84,14 +84,14 @@ namespace C
                             {
                                 if (arg_elem->ptr != null)
                                 {
-                                    text.__force_trap();
+                                    text.__force_trap(null, 0);
                                 }
                             }
                         }
                     }
                     finally
                     {
-                        text.free(this.arg_elems);
+                        Marshal.FreeHGlobal((nint)this.arg_elems);
                         this.arg_elems = null;
                     }
                 }
@@ -101,7 +101,7 @@ namespace C
             {
                 if (this.arg_elems == null)
                 {
-                    text.__force_trap();
+                    text.__force_trap(null, 0);
                     return;
                 }
 
@@ -140,7 +140,7 @@ namespace C
             {
                 if (this.arg_elems == null)
                 {
-                    text.__force_trap();
+                    text.__force_trap(null, 0);
                     return null;
                 }
 

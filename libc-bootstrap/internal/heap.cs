@@ -67,21 +67,33 @@ public static partial class text
 
         private static long request_number;
         private static long break_number;
-        private static readonly object heap_locker = new object();
+        private static readonly object heap_locker = new();
 
         [DebuggerStepperBoundary]
-        private static void try_trap_heap(bool force)
+        private static unsafe void try_trap_heap(
+            bool force, int code, sbyte* filename, int linenumber)
         {
             if (force || heap_check_mode == HeapCheckModes.Trap)
             {
-                __force_trap();
+                if (Debugger.IsAttached)
+                {
+                    Debugger.Break();
+                }
+                else
+                {
+                    Debugger.Launch();
+                }
+                Console.Error.WriteLine(
+                    $"detected heap corruption: code={code}, location={__ngetstr(filename) ?? "unknown"}({linenumber})");
+                Environment.Exit(255);
             }
         }
 
         public static void set_break_allocation(long number) =>
             break_number = number;
 
-        private static unsafe bool verify_heap(bool force)
+        private static unsafe bool verify_heap(
+            bool force, sbyte* filename, int linenumber)
         {
             var head = heap_block_header.head;
             var header = head->next;
@@ -90,24 +102,24 @@ public static partial class text
             {
                 if (header->guard_bytes != no_mans_land_bytes)
                 {
-                    try_trap_heap(force);
+                    try_trap_heap(force, 1, filename, linenumber);
                     return false;
                 }
 
                 if (header->size == 0)
                 {
-                    try_trap_heap(force);
+                    try_trap_heap(force, 2, filename, linenumber);
                     return false;
                 }
 
                 if (header->previous->next != header)
                 {
-                    try_trap_heap(force);
+                    try_trap_heap(force, 3, filename, linenumber);
                     return false;
                 }
                 if (header->next->previous != header)
                 {
-                    try_trap_heap(force);
+                    try_trap_heap(force, 4, filename, linenumber);
                     return false;
                 }
 
@@ -118,7 +130,7 @@ public static partial class text
                 {
                     if (memcmp(another_guard_bytes, ap, sizeof(ulong)) != 0)
                     {
-                        try_trap_heap(force);
+                        try_trap_heap(force, 5, filename, linenumber);
                         return false;
                     }
                 }
@@ -129,7 +141,7 @@ public static partial class text
             return true;
         }
 
-        public static bool verify_heap()
+        public static unsafe bool verify_heap(sbyte* filename, int linenumber)
         {
             if (heap_check_mode == HeapCheckModes.None)
             {
@@ -138,7 +150,7 @@ public static partial class text
 
             lock (heap_locker)
             {
-                return verify_heap(false);
+                return verify_heap(false, filename, linenumber);
             }
         }
 
@@ -150,7 +162,7 @@ public static partial class text
         {
             if (size == 0)
             {
-                __trap();
+                __trap(filename, linenumber);
                 return null;
             }
 
@@ -161,7 +173,7 @@ public static partial class text
                     var number = Interlocked.Increment(ref request_number);
                     if (number == break_number)
                     {
-                        __force_trap();
+                        __force_trap(filename, linenumber);
                     }
 
                     var total_size =
@@ -171,7 +183,7 @@ public static partial class text
                     var header = (heap_block_header*)Marshal.AllocHGlobal((nint)total_size);
                     if (header == null)
                     {
-                        try_trap_heap(false);
+                        try_trap_heap(false, 6, filename, linenumber);
                         return null;
                     }
 
@@ -181,14 +193,14 @@ public static partial class text
                     {
                         if (heap_check_always)
                         {
-                            verify_heap(true);
+                            verify_heap(true, filename, linenumber);
                         }
 
                         var head = heap_block_header.head;
 
                         if (head->next->previous != head)
                         {
-                            try_trap_heap(true);
+                            try_trap_heap(true, 7, filename, linenumber);
                             return null;
                         }
 
@@ -237,7 +249,7 @@ public static partial class text
             
             if (size == 0)
             {
-                __trap();
+                __trap(filename, linenumber);
                 return null;
             }
 
@@ -248,7 +260,7 @@ public static partial class text
                     var number = Interlocked.Increment(ref request_number);
                     if (number == break_number)
                     {
-                        __force_trap();
+                        __force_trap(filename, linenumber);
                     }
 
                     var total_size =
@@ -261,13 +273,13 @@ public static partial class text
                     {
                         if (heap_check_always)
                         {
-                            verify_heap(true);
+                            verify_heap(true, filename, linenumber);
                         }
 
                         var header = (heap_block_header*)Marshal.ReAllocHGlobal((nint)old_header, (nint)total_size);
                         if (header == null)
                         {
-                            try_trap_heap(false);
+                            try_trap_heap(false, 8, filename, linenumber);
                             return null;
                         }
 
@@ -320,7 +332,8 @@ public static partial class text
             return body;
         }
 
-        public static unsafe void free(void* body)
+        public static unsafe void free(
+            void* body, sbyte* filename, int linenumber)
         {
             if (body == null)
             {
@@ -335,7 +348,7 @@ public static partial class text
                 {
                     if (heap_check_always)
                     {
-                        verify_heap(true);
+                        verify_heap(true, filename, linenumber);
                     }
 
                     var next = header->next;
@@ -343,13 +356,13 @@ public static partial class text
 
                     if (next->previous != header)
                     {
-                        try_trap_heap(true);
+                        try_trap_heap(true, 9, filename, linenumber);
                         return;
                     }
 
                     if (prev->next != header)
                     {
-                        try_trap_heap(true);
+                        try_trap_heap(true, 10, filename, linenumber);
                         return;
                     }
 

@@ -108,10 +108,10 @@ namespace C
         {
             for (var index = (nuint)0; index < pglob->gl_pathc; index++)
             {
-                heap.free(pglob->gl_pathv[index]);
+                heap.free(pglob->gl_pathv[index], null, 0);
                 pglob->gl_pathv[index] = null;
             }
-            heap.free(pglob->gl_pathv);
+            heap.free(pglob->gl_pathv, null, 0);
             pglob->gl_pathv = null;
         }
     }

@@ -159,6 +159,23 @@ public static partial class text
         {
             Debugger.Launch();
         }
+        Console.Error.WriteLine("trap occurred.");
+        Environment.Exit(255);
+    }
+
+    [DebuggerStepperBoundary]
+    internal static unsafe void __force_trap(sbyte* filename, int linenumber)
+    {
+        if (Debugger.IsAttached)
+        {
+            Debugger.Break();
+        }
+        else
+        {
+            Debugger.Launch();
+        }
+        Console.Error.WriteLine($"trap occurred: {__ngetstr(filename) ?? "unknown"}({linenumber})");
+        Environment.Exit(255);
     }
 
     [DebuggerStepperBoundary]
@@ -171,9 +188,19 @@ public static partial class text
         }
     }
 
+    [DebuggerStepperBoundary]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    internal static unsafe void __trap(sbyte* fileName, int line)
+    {
+        if (is_enabled_trap)
+        {
+            __force_trap(fileName, line);
+        }
+    }
+
     ////////////////////////////////////////////////////////////
 
     // void exit(int code);
-    public static unsafe void exit(int code) =>
+    public static void exit(int code) =>
         Environment.Exit(code);
 }

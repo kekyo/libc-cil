@@ -44,8 +44,8 @@ public static partial class text
         heap.set_break_allocation(number);
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
-    public static unsafe bool __verify_heap() =>
-        heap.verify_heap();
+    public static unsafe bool __verify_heap(sbyte* filename, int linenumber) =>
+        heap.verify_heap(filename, linenumber);
 
     // void *malloc(size_t size);
     public static unsafe void* malloc(
@@ -80,7 +80,12 @@ public static partial class text
     // void free(void *p);
     public static unsafe void free(
         void* p) =>
-        heap.free(p);
+        heap.free(p, null, 0);
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void __free_dbg(
+        void* p, sbyte* filename, int linenumber) =>
+        heap.free(p, filename, linenumber);
 
     ///////////////////////////////////////////////////////////////////////
 
@@ -189,7 +194,6 @@ public static partial class text
             Console.WriteLine(
                 $"posix_spawnp: {fileName} {sb}");
 #endif
-            
             var parentIn = fileio.get_stream(0);
             
             var psi = new ProcessStartInfo();
