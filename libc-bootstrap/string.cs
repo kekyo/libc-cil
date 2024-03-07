@@ -65,6 +65,20 @@ public static partial class text
 
     ///////////////////////////////////////////////////////////////////////
 
+    // char *strncat(char *s1, char *s2, size_t n);
+    public static unsafe sbyte* strncat(sbyte* s1, sbyte* s2, nuint n)
+    {
+        sbyte* s = s1;
+        s1 += strlen(s1);
+        while (n >= 1 && *s2 != 0)
+        {
+            n--;
+            *s1++ = *s2++;
+        }
+        *s1++ = 0;
+        return s;
+    }
+
     // char *strncpy(char *dst, char void *src, size_t n);
     public static unsafe sbyte* strncpy(sbyte* dst, sbyte* src, nuint n)
     {
