@@ -26,7 +26,7 @@ public static partial class text
         var lpbn = (nint)Interlocked.Exchange(ref __basename, (nint)pbn);
         if (lpbn != 0)
         {
-            heap.free((void*)lpbn);
+            heap.free((void*)lpbn, null, 0);
         }
         return pbn;
     }
@@ -45,7 +45,7 @@ public static partial class text
         var lpdn = (nint)Interlocked.Exchange(ref __dirname, (nint)pdn);
         if (lpdn != 0)
         {
-            heap.free((void*)lpdn);
+            heap.free((void*)lpdn, null, 0);
         }
         return pdn;
     }
