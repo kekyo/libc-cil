@@ -131,7 +131,7 @@ namespace C
 
         public unsafe struct va_list
         {
-            private __va_arg_elem* arg_elems;
+            internal __va_arg_elem* arg_elems;
 
             internal va_list(__va_arg_elem* arg_elems) =>
                 this.arg_elems = arg_elems;
@@ -193,6 +193,10 @@ namespace C
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static unsafe void* __va_arg(va_list* ap) =>
             ap->get();
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static unsafe void __va_copy(va_list* dest, va_list* src) =>
+            *dest = new(src->arg_elems);
 
         ///////////////////////////////////////////////////////////////////////
 
