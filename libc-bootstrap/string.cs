@@ -14,7 +14,7 @@ namespace C;
 public static partial class text
 {
     // void *memcpy(void *dst, const void *src, size_t n);
-    public static unsafe void memcpy(void* dst, void* src, nuint n)
+    public static unsafe void* memcpy(void* dst, void* src, nuint n)
     {
         var r = n;
         var d = (byte*)dst;
@@ -26,6 +26,7 @@ public static partial class text
             s++;
             r--;
         }
+        return dst;
     }
 
     // int memcmp(const void *s1, const void *s2, size_t n);
