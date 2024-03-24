@@ -90,17 +90,26 @@ public static partial class text
       
         public static bool close(int fd)
         {
+            Stream? f = null;
             lock (files)
             {
-                if (files.TryGetValue(fd, out var f))
+                if (files.TryGetValue(fd, out f))
                 {
                     files.Remove(fd);
                     descriptors.Push(fd);
-                    f.Dispose();
-                    return true;
                 }
             }
-            return false;
+
+            if (f != null)
+            {
+                f.Flush();
+                f.Dispose();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }
