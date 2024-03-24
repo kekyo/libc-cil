@@ -96,6 +96,7 @@ public static partial class text
                 {
                     files.Remove(fd);
                     descriptors.Push(fd);
+                    f.Flush();
                     f.Dispose();
                     return true;
                 }
