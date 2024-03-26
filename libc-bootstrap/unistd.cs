@@ -10,66 +10,87 @@
 using System;
 using System.IO;
 
-namespace C;
-
-public static partial class text
+namespace C
 {
-    // int unlink(char *pathname);
-    public static unsafe int unlink(sbyte* pathname)
+    namespace type
     {
-        try
+        public struct timespec
         {
-            var pn = __ngetstr(pathname)!;
-            File.Delete(pn);
+            public long tv_sec;
+            public long tv_nsec;
         }
-        catch (Exception ex)
+        
+        public struct stat
         {
-            __set_exception_to_errno(ex);
-            return -1;
+            public long st_size;
+            public timespec st_atim;
+            public timespec st_mtim;
         }
-        return 0;
     }
-
-    // int close(int fd);
-    public static int close(int fd)
+    
+    public static partial class text
     {
-        try
+        // int unlink(char *pathname);
+        public static unsafe int unlink(sbyte* pathname)
         {
-            if (!fileio.close(fd))
+            try
             {
-                errno = data.EBADF;
+                var pn = __ngetstr(pathname)!;
+                File.Delete(pn);
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
                 return -1;
             }
             return 0;
         }
-        catch (Exception ex)
+
+        // int close(int fd);
+        public static int close(int fd)
         {
-            __set_exception_to_errno(ex);
-            return -1;
-        }
-    }
-    
-    // int stat(char *pathname, struct stat *statbuf);
-    public static unsafe int stat(sbyte* pathname, void* statbuf)
-    {
-        try
-        {
-            // HACK: Only checking exists a file.
-            var pn = __ngetstr(pathname);
-            if (File.Exists(pn))
+            try
             {
+                if (!fileio.close(fd))
+                {
+                    errno = data.EBADF;
+                    return -1;
+                }
                 return 0;
             }
-            else
+            catch (Exception ex)
             {
-                errno = data.ENOENT;
+                __set_exception_to_errno(ex);
                 return -1;
             }
         }
-        catch (Exception ex)
+    
+        // int stat(char *pathname, struct stat *statbuf);
+        public static unsafe int stat(sbyte* pathname, type.stat* statbuf)
         {
-            __set_exception_to_errno(ex);
-            return -1;
+            try
+            {
+                var pn = __ngetstr(pathname);
+                var file = new FileInfo(pn!);
+                if (file.Exists)
+                {
+                    memset(statbuf, 0, (nuint)sizeof(type.stat));
+                    statbuf->st_size = file.Length;
+                    __to_timespec(file.LastAccessTime, &statbuf->st_atim);
+                    __to_timespec(file.LastWriteTime, &statbuf->st_mtim);
+                    return 0;
+                }
+                else
+                {
+                    errno = data.ENOENT;
+                    return -1;
+                }
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return -1;
+            }
         }
     }
 }
