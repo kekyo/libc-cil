@@ -119,6 +119,23 @@ public static partial class text
     }
 
     [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public static unsafe void __nstrdup_to(string? str, sbyte* buf)
+    {
+        if (str == null)
+        {
+            *buf = 0;
+            return;
+        }
+        var bytes = Encoding.UTF8.GetBytes(str);
+        fixed (byte* p = &bytes[0])
+        {
+            var size = (nuint)bytes.Length;
+            memcpy(buf, p, size);
+            *(buf + size) = 0;
+        }
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
     public static unsafe string? __ngetstr(sbyte* str)
     {
         if (str == (sbyte*)0)
