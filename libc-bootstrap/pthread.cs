@@ -9,6 +9,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -83,10 +84,12 @@ namespace C
         
         ////////////////////////////////////////////////////////////
         
+        [DebuggerStepperBoundary]
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static unsafe type.__tls_slot* __alloc_tls_slot(nuint size, delegate*<void> initializer) =>
             (type.__tls_slot*)__alloc_obj(new TlsAccessor(size, initializer));
 
+        [DebuggerStepperBoundary]
         [EditorBrowsable(EditorBrowsableState.Advanced)]
         public static unsafe void* __get_tls_value(type.__tls_slot* slot)
         {
