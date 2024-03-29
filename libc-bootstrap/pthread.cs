@@ -8,71 +8,133 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace C;
-
-public static partial class text
+namespace C
 {
-    private sealed unsafe class InternalPThread
+    namespace type
     {
-        private readonly Thread thread;
-        private readonly delegate*<void*, void*> startRoutine;
-        private readonly void* arg;
-        private void* retVal;
-
-        public InternalPThread(delegate*<void*, void*> startRoutine, void* arg)
+        [EditorBrowsable(EditorBrowsableState.Advanced)]
+        [StructLayout(LayoutKind.Sequential, Size = 0, Pack = 8)]
+        public readonly struct __tls_slot
         {
-            this.startRoutine = startRoutine;
-            this.arg = arg;
-
-            this.thread = new(this.ThreadEntry);
-            this.thread.Start();
         }
-
-        public void* Join()
-        {
-            this.thread.Join();
-            return this.retVal;
-        }
-
-        private void ThreadEntry(object? _) =>
-            this.retVal = this.startRoutine(this.arg);
     }
     
-    // int pthread_create(pthread_t *newthread,
-    //   const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
-    public static unsafe int pthread_create(void** newthread,
-        void* attr,
-        delegate*<void*, void*> start_routine,
-        void* arg)
+    public static partial class text
     {
-        try
+        private sealed unsafe class TlsAccessor
         {
-            var t = new InternalPThread(start_routine, arg);
-            *newthread = __alloc_obj(t);
+            private struct TlsValue
+            {
+                public void* value;
+            }
+            
+            private readonly LocalDataStoreSlot slot = Thread.AllocateDataSlot();
+            private readonly nuint size;
+            private readonly delegate*<void> initializer;
+
+            public TlsAccessor(nuint size, delegate*<void> initializer)
+            {
+                this.size = size;            
+                this.initializer = initializer;
+            }
+
+            public void* GetValue()
+            {
+                if (Thread.GetData(this.slot) is not TlsValue tlsValue)
+                {
+                    tlsValue = new();
+                    tlsValue.value = calloc(1, this.size);
+                    Thread.SetData(this.slot, tlsValue);
+                    this.initializer();
+                }
+                return tlsValue.value;
+            }
         }
-        catch (Exception ex)
+        
+        private sealed unsafe class InternalPThread
         {
-            __set_exception_to_errno(ex);
-            return __errno;
+            private readonly Thread thread;
+            private readonly delegate*<void*, void*> startRoutine;
+            private readonly void* arg;
+            private void* retVal;
+
+            public InternalPThread(delegate*<void*, void*> startRoutine, void* arg)
+            {
+                this.startRoutine = startRoutine;
+                this.arg = arg;
+
+                this.thread = new(this.ThreadEntry);
+                this.thread.Start();
+            }
+
+            public void* Join()
+            {
+                this.thread.Join();
+                return this.retVal;
+            }
+
+            private void ThreadEntry(object? _) =>
+                this.retVal = this.startRoutine(this.arg);
         }
-        return 0;
-    }
-    
-    // int pthread_join(pthread_t th, void **thread_return);
-    public static unsafe int pthread_join(void* th, void** thread_return)
-    {
-        try
+        
+        ////////////////////////////////////////////////////////////
+        
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static unsafe type.__tls_slot* __alloc_tls_slot(nuint size, delegate*<void> initializer) =>
+            (type.__tls_slot*)__alloc_obj(new TlsAccessor(size, initializer));
+
+        [EditorBrowsable(EditorBrowsableState.Advanced)]
+        public static unsafe void* __get_tls_value(type.__tls_slot* slot)
         {
-            var t = (InternalPThread)__get_obj(th)!;
-            *thread_return = t.Join();
+            var accessor = (TlsAccessor)__get_obj(slot)!;
+            return accessor.GetValue();
         }
-        catch (Exception ex)
+
+        ////////////////////////////////////////////////////////////
+
+        // int pthread_create(pthread_t *newthread,
+        //   const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
+        public static unsafe int pthread_create(void** newthread,
+            void* attr,
+            delegate*<void*, void*> start_routine,
+            void* arg)
         {
-            __set_exception_to_errno(ex);
-            return __errno;
+            try
+            {
+                var t = new InternalPThread(start_routine, arg);
+                *newthread = __alloc_obj(t);
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return __errno;
+            }
+            return 0;
         }
-        return 0;
+        
+        // int pthread_join(pthread_t th, void **thread_return);
+        public static unsafe int pthread_join(void* th, void** thread_return)
+        {
+            try
+            {
+                var t = (InternalPThread)__get_obj(th)!;
+                var r = t.Join();
+                if (thread_return != null)
+                {
+                    *thread_return = r;
+                }
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return __errno;
+            }
+            return 0;
+        }
     }
 }
+
