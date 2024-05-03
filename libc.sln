@@ -21,10 +21,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "crt0", "crt0", "{B1D43B47-F195-44F1-A00D-56DDE3BFE367}"
 	ProjectSection(SolutionItems) = preProject
 		crt0\crt0_template.cs = crt0\crt0_template.cs
-		crt0\crt0_i.s = crt0\crt0_i.s
-		crt0\crt0_i_v.s = crt0\crt0_i_v.s
-		crt0\crt0_v_v.s = crt0\crt0_v_v.s
-		crt0\crt0_v.s = crt0\crt0_v.s
+		crt0\crt0_i.o = crt0\crt0_i.o
+		crt0\crt0_icv.o = crt0\crt0_icv.o
+		crt0\crt0_v.o = crt0\crt0_v.o
+		crt0\crt0_vcv.o = crt0\crt0_vcv.o
 	EndProjectSection
 EndProject
 Global
