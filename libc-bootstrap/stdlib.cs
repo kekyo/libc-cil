@@ -95,7 +95,42 @@ public static partial class text
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
         'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
     };
-    
+
+    // char *realpath(const char *path, char *resolved_path);
+    public static unsafe sbyte* realpath(sbyte* path, sbyte* resolved_path)
+    {
+        if (resolved_path != null)
+        {
+            errno = data.ENAMETOOLONG;
+            return null;
+        }
+
+        var p = __ngetstr(path);
+        if (p == null)
+        {
+            errno = data.EINVAL;
+            return null;
+        }
+
+        if (p == "-")
+        {
+            errno = data.ENOENT;
+            return null;
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(p);
+            return __nstrdup(fullPath);
+        }
+        catch (Exception ex)
+        {
+            __set_exception_to_errno(ex);
+            return null;
+        }
+    }
+
+
     private static string __gettemp_postfix()
     {
         // "0-9a-zA-Z": 10 + 26 + 26 = 62
