@@ -180,6 +180,64 @@ public static partial class text
         return buf;
     }
 
+    [ThreadStatic]
+    private static unsafe sbyte* strtok_last;
+
+    // char *strtok(char *str, const char *delim);
+    public static unsafe sbyte* strtok(sbyte* str, sbyte* delim)
+    {
+        // Ported from NetBSD libc.
+        if (str == null)
+        {
+            str = strtok_last;
+            if (str == null)
+            {
+                return null;
+            }
+        }
+
+        cont:
+        int c = *str++;
+        sbyte* spanp;
+        int sc;
+        for (spanp = delim; (sc = *spanp++) != 0;)
+        {
+            if (c == sc)
+            {
+                goto cont;
+            }
+        }
+
+        if (c == 0)
+        {
+            strtok_last = null;
+            return null;
+        }
+        var tok = str - 1;
+
+        while (true)
+        {
+            c = *str++;
+            spanp = delim;
+            do
+            {
+                if ((sc = *spanp++) == c)
+                {
+                    if (c == 0)
+                    {
+                        str = null;
+                    }
+                    else
+                    {
+                        str[-1] = 0;
+                    }
+                    strtok_last = str;
+                    return tok;
+                }
+            } while (sc != 0);
+        }
+    }
+
     // char *strchr(const char *s, int c);
     public static unsafe sbyte* strchr(sbyte* s, int c)
     {
