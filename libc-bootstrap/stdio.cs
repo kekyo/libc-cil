@@ -181,6 +181,28 @@ namespace C
                 return -1;
             }
         }
+        
+        // int ferror(FILE *fp);
+        public static unsafe int ferror(FILE* fp)
+        {
+            try
+            {
+                // Dirty hack:
+                if (__errno == 0)
+                {
+                    if (to_stream(fp) != null)
+                    {
+                        return 0;
+                    }
+                }
+                return -1;
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return -1;
+            }
+        }
 
         // int fputc(int c, FILE *fp);
         public static unsafe int fputc(int c, FILE* fp)
