@@ -26,13 +26,14 @@ public static partial class data
     {
         var envs = Environment.GetEnvironmentVariables();
         var penv = (sbyte**)text.heap.malloc(
-            (nuint)(envs.Count * sizeof(sbyte*)), null, 0);
+            (nuint)((envs.Count + 1) * sizeof(sbyte*)), null, 0);
         var index = 0;
         foreach (var entry in envs)
         {
             var kv = (DictionaryEntry)entry!;
             penv[index++] = text.__nstrdup($"{kv.Key}={kv.Value}");
         }
+        penv[index] = null;
         return penv;
     }
 }
