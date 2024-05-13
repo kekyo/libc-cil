@@ -238,8 +238,6 @@ public static partial class text
             psi.CreateNoWindow = true;
             psi.UseShellExecute = false;
             psi.RedirectStandardInput = parentIn != null;
-            //psi.RedirectStandardOutput = true;
-            //psi.RedirectStandardError = true;
 
             var p = Process.Start(psi);
             if (p != null)

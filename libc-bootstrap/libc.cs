@@ -8,8 +8,10 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -215,6 +217,57 @@ public static partial class text
         }
     }
 
+    ////////////////////////////////////////////////////////////
+
+    private static readonly char[] __pathSeparators = new[]
+    {
+        Path.PathSeparator,
+    };
+    
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static void __prepend_path_env(string path)
+    {
+        // Uses from embedded startup by chibild.
+        if (Environment.GetEnvironmentVariable("PATH") is { } pathenv)
+        {
+            static string[] PrependToDistinct(
+                string item0,
+                IEnumerable<string> str)
+            {
+                var hashSet = Environment.OSVersion.Platform == PlatformID.Win32NT ?
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) :
+                    new Dictionary<string, string>();
+                var result = new List<string>();
+                
+                hashSet.Add(item0, item0);
+                result.Add(item0);
+                
+                foreach (var item in str)
+                {
+                    if (!hashSet.ContainsKey(item))
+                    {
+                        hashSet.Add(item, item);
+                        result.Add(item);
+                    }
+                }
+                
+                return result.ToArray();
+            }
+            
+            var paths = pathenv.Split(
+                __pathSeparators,
+                StringSplitOptions.RemoveEmptyEntries);
+            var combined = PrependToDistinct(path, paths);
+            var newPaths = string.Join(Path.PathSeparator.ToString(), combined);
+
+            Environment.SetEnvironmentVariable("PATH", newPaths);
+        }
+        else
+        {
+            Environment.SetEnvironmentVariable("PATH", path);
+        }
+    }
+    
     ////////////////////////////////////////////////////////////
 
     // void exit(int code);

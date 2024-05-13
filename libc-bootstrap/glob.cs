@@ -33,7 +33,7 @@ namespace C
     
     public static partial class text
     {
-        private static readonly char[] __path_separators =
+        private static readonly char[] __directory_separators =
             Environment.OSVersion.Platform == PlatformID.Win32NT ?
                 new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, } :
                 new[] { Path.DirectorySeparatorChar, };
@@ -50,7 +50,7 @@ namespace C
             {
                 var pt = __ngetstr(pattern)!;
                 var fullPath = Path.GetFullPath(pt);
-                var elements = fullPath.Split(__path_separators);
+                var elements = fullPath.Split(__directory_separators);
                 if (elements[0].Length == 0)
                 {
                     elements[0] = Path.DirectorySeparatorChar.ToString();
