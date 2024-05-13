@@ -192,6 +192,30 @@ public static partial class text
     
     ///////////////////////////////////////////////////////////////////////
 
+    // int system(const char *command);
+    public static unsafe int system(sbyte* command)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo();
+            psi.FileName = __ngetstr(command)!;
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = true;
+
+            using var p = Process.Start(psi)!;
+
+            p.WaitForExit();
+
+            return p.ExitCode;
+        }
+        catch (Exception ex)
+        {
+             __set_exception_to_errno(ex);
+            return -1;
+        }
+    }
+    
     // typedef int pid_t;
     // int posix_spawnp(pid_t *pid,
     //   const char *path,
