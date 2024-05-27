@@ -24,24 +24,6 @@ using System.Text;
 
 namespace C;
 
-public static partial class data
-{
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static unsafe readonly nuint __builtin_sizeof_intptr__ = (nuint)sizeof(nint);
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static unsafe readonly nuint __builtin_sizeof_uintptr__ = (nuint)sizeof(nuint);
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static readonly nint __builtin_intptr_max__ = ((nint)new IntPtr(-1)) >> 1;
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static readonly nint __builtin_intptr_min__ = ~(((nint)new IntPtr(-1)) >> 1);
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static readonly nuint __builtin_uintptr_max__ = (nuint)(nint)new IntPtr(-1);
-}
-
 public static partial class text
 {
     private static bool get_debugging_switch(string environment_name, bool default_value =
