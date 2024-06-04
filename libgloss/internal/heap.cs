@@ -128,7 +128,7 @@ public static partial class text
 
                 fixed (void* ap = &no_mans_land_bytes)
                 {
-                    if (memcmp(another_guard_bytes, ap, sizeof(ulong)) != 0)
+                    if (__memcmp(another_guard_bytes, ap, sizeof(ulong)) != 0)
                     {
                         try_trap_heap(force, 5, filename, linenumber);
                         return false;
@@ -219,11 +219,11 @@ public static partial class text
                         var another_guard_bytes = body + size;
                         fixed (void* ap = &no_mans_land_bytes)
                         {
-                            memcpy(another_guard_bytes, ap, sizeof(ulong));
+                            __memcpy(another_guard_bytes, ap, sizeof(ulong));
                         }
                     }
 
-                    memset(body, 0xcd, size);
+                    __memset(body, 0xcd, size);
 
                     return body;
                 }
@@ -299,7 +299,7 @@ public static partial class text
                         var another_guard_bytes = body + size;
                         fixed (void* ap = &no_mans_land_bytes)
                         {
-                            memcpy(another_guard_bytes, ap, sizeof(ulong));
+                            __memcpy(another_guard_bytes, ap, sizeof(ulong));
                         }
 
                         return body;
@@ -328,7 +328,7 @@ public static partial class text
             }
 
             // malloc is returned uninitialized memory.
-            memset(body, 0, s);
+            __memset(body, 0, s);
             return body;
         }
 
@@ -374,12 +374,12 @@ public static partial class text
                 header->previous = null;
                 header->guard_bytes = dead_bytes;
 
-                memset(body, 0xdd, header->size);
+                __memset(body, 0xdd, header->size);
 
                 var another_guard_bytes = ((byte*)body) + header->size;
                 fixed (void* ap = &dead_bytes)
                 {
-                    memcpy(another_guard_bytes, ap, sizeof(ulong));
+                    __memcpy(another_guard_bytes, ap, sizeof(ulong));
                 }
 
                 Marshal.FreeHGlobal((nint)header);

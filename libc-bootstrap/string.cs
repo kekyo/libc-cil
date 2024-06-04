@@ -14,55 +14,16 @@ namespace C;
 public static partial class text
 {
     // void *memcpy(void *dst, const void *src, size_t n);
-    public static unsafe void* memcpy(void* dst, void* src, nuint n)
-    {
-        var r = n;
-        var d = (byte*)dst;
-        var s = (byte*)src;
-        while (r > 0)
-        {
-            *d = *s;
-            d++;
-            s++;
-            r--;
-        }
-        return dst;
-    }
+    public static unsafe void* memcpy(void* dst, void* src, nuint n) =>
+        __memcpy(dst, src, n);
 
     // int memcmp(const void *s1, const void *s2, size_t n);
-    public static unsafe int memcmp(void* s1, void* s2, nuint n)
-    {
-        var r = n;
-        var s1_ = (byte*)s1;
-        var s2_ = (byte*)s2;
-        while (r > 0)
-        {
-            var num = *s1_ - *s2_;
-            if (num != 0)
-            {
-                return num;
-            }
-            s1_++;
-            s2_++;
-            r--;
-        }
-        return 0;
-    }
+    public static unsafe int memcmp(void* s1, void* s2, nuint n) =>
+        __memcmp(s1, s2, n);
 
     // void *memset(void *s, int c, size_t n);
-    public static unsafe void* memset(void* s, int c, nuint n)
-    {
-        var r = n;
-        var s_ = (byte*)s;
-        var c_ = (byte)c;
-        while (r > 0)
-        {
-            *s_ = c_;
-            s_++;
-            r--;
-        }
-        return s;
-    }
+    public static unsafe void* memset(void* s, int c, nuint n) =>
+        __memset(s, c, n);
 
     ///////////////////////////////////////////////////////////////////////
 
@@ -145,16 +106,8 @@ public static partial class text
     }
 
     // size_t strlen(const char *p);
-    public static unsafe nuint strlen(sbyte* p)
-    {
-        nuint len = 0;
-        while (*p != 0)
-        {
-            p++;
-            len++;
-        }
-        return len;
-    }
+    public static unsafe nuint strlen(sbyte* p) =>
+        __strlen(p);
 
     // char *strdup(char *p);
     public static unsafe sbyte* strdup(sbyte* p)
@@ -334,4 +287,14 @@ public static partial class text
         }
         return 0;
     }
+
+    ///////////////////////////////////////////////////////////////////////
+
+    // unsigned long strtoul(const char *nptr, char **endptr, int base);
+    public static unsafe ulong strtoul(sbyte* nptr, sbyte** endptr, int @base) =>
+        strto.strtoul(nptr, endptr, @base);
+
+    // double strtod(const char *nptr, char **endptr);
+    public static unsafe double strtod(sbyte* nptr, sbyte** endptr) =>
+        strto.strtod(nptr, endptr);
 }

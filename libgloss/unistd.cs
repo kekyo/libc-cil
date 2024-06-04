@@ -30,6 +30,9 @@ namespace C
     
     public static partial class text
     {
+        private static readonly DateTime __unix_epoch =
+            new(1970, 1, 1, 0, 0, 0, DateTimeKind.Local);
+
         // int unlink(char *pathname);
         public static unsafe int unlink(sbyte* pathname)
         {
@@ -64,7 +67,14 @@ namespace C
                 return -1;
             }
         }
-    
+
+        private static unsafe void __to_timespec(DateTime dateTime, type.timespec* ts)
+        {
+            var d = dateTime.Subtract(__unix_epoch);
+            ts->tv_sec = (long)d.TotalSeconds;
+            ts->tv_nsec = (long)(d.TotalMilliseconds * 1000);
+        }
+
         // int stat(char *pathname, struct stat *statbuf);
         public static unsafe int stat(sbyte* pathname, type.stat* statbuf)
         {
@@ -74,7 +84,7 @@ namespace C
                 var file = new FileInfo(pn!);
                 if (file.Exists)
                 {
-                    memset(statbuf, 0, (nuint)sizeof(type.stat));
+                    __memset(statbuf, 0, (nuint)sizeof(type.stat));
                     statbuf->st_size = file.Length;
                     __to_timespec(file.LastAccessTime, &statbuf->st_atim);
                     __to_timespec(file.LastWriteTime, &statbuf->st_mtim);

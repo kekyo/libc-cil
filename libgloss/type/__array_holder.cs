@@ -31,7 +31,7 @@ public sealed unsafe class __array_holder<T> : CriticalFinalizerObject
             var parr = (void*)h.AddrOfPinnedObject();
             var size = (nuint)arr.Length * element_size;
             this.ptr = (T*)text.malloc(size);
-            text.memcpy(this.ptr, parr, size);
+            text.__memcpy(this.ptr, parr, size);
         }
         finally
         {

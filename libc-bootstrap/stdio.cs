@@ -226,5 +226,50 @@ namespace C
         public static unsafe void __vwrprintf(
             __writer wr, sbyte* fmt, va_list ap) =>
             stdio.vwrprintf(wr, fmt, ap);
+
+        ///////////////////////////////////////////////////////////////////////
+
+        // int vsprintf(char *buf, char *fmt, va_list ap);
+        public static unsafe int vsprintf(sbyte* buf, sbyte* fmt, va_list ap)
+        {
+            var pbuf = buf;
+            nuint len = 0;
+            stdio.vwrprintf((p, l) =>
+            {
+                memcpy(pbuf, p, l);
+                pbuf += l;
+                len += l;
+            },
+            fmt, ap);
+            *pbuf = 0;
+            return (int)len;
+        }
+
+        // int vfprintf(FILE *fp, char *fmt, va_list ap);
+        public static unsafe int vfprintf(FILE* fp, sbyte* fmt, va_list ap)
+        {
+            try
+            {
+                var s = to_stream(fp)!;
+                var len = 0;
+                stdio.vwrprintf((p, l) =>
+                {
+                    while (l > 0)
+                    {
+                        s.WriteByte((byte)*p);
+                        p++;
+                        l--;
+                        len++;
+                    }
+                },
+                fmt, ap);
+                return len;
+            }
+            catch (Exception ex)
+            {
+                __set_exception_to_errno(ex);
+                return -1;
+            }
+        }
     }
 }
