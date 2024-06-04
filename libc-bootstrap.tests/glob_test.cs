@@ -15,6 +15,7 @@ using System.IO;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class glob_test
 {
     [Test]

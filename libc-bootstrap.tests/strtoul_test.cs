@@ -12,6 +12,7 @@ using NUnit.Framework;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class strtoul_test
 {
     private unsafe ulong strtoul(string str, out int endindex, int @base)

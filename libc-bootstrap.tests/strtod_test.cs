@@ -12,6 +12,7 @@ using NUnit.Framework;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class strtod_test
 {
     private unsafe double strtod(string str, out int endindex)

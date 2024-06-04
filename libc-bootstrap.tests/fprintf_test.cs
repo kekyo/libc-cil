@@ -13,6 +13,7 @@ using System.Text;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class fprintf_test
 {
     private unsafe string fprintf(string fmt, params object[] args)
