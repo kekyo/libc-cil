@@ -22,6 +22,9 @@ public static partial class text
 {
     internal static unsafe void* __memcpy(void* dst, void* src, nuint n)
     {
+#if true
+        return (void*)interop.__memcpy((nint)dst, (nint)src, (nint)n);
+#else
         var r = n;
         var d = (byte*)dst;
         var s = (byte*)src;
@@ -33,6 +36,25 @@ public static partial class text
             r--;
         }
         return dst;
+#endif
+    }
+
+    internal static unsafe void* __memset(void* s, int c, nuint n)
+    {
+#if true
+        return (void*)interop.__memset((nint)s, c, (nint)n);
+#else
+        var r = n;
+        var s_ = (byte*)s;
+        var c_ = (byte)c;
+        while (r > 0)
+        {
+            *s_ = c_;
+            s_++;
+            r--;
+        }
+        return s;
+#endif
     }
 
     internal static unsafe int __memcmp(void* s1, void* s2, nuint n)
@@ -52,20 +74,6 @@ public static partial class text
             r--;
         }
         return 0;
-    }
-
-    internal static unsafe void* __memset(void* s, int c, nuint n)
-    {
-        var r = n;
-        var s_ = (byte*)s;
-        var c_ = (byte)c;
-        while (r > 0)
-        {
-            *s_ = c_;
-            s_++;
-            r--;
-        }
-        return s;
     }
 
     internal static unsafe nuint __strlen(sbyte* p)
