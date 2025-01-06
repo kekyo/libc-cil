@@ -1,0 +1,4 @@
+#!/bin/sh
+
+#`dirname $0`/../../chibicc-cil/stage2/chibicc $@
+`dirname $0`/../../chibicc-cil/chibicc $@

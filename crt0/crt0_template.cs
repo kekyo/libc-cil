@@ -8,6 +8,9 @@
 /////////////////////////////////////////////////////////////////////////////////////
 
 // Template implementation for startup.
+// This code is to be used as a template for a real-world crt0 implementation,
+// but is presented for reference only.
+// It is not automatically converted to crt0.
 
 using System;
 using System.IO;
@@ -16,11 +19,6 @@ using System.Text;
 
 public static class Program
 {
-    private static unsafe int main(int argc, sbyte** argv)
-    {
-        return 0;
-    }
-    
     public static unsafe int _start()
     {
         var args = Environment.GetCommandLineArgs();
@@ -48,4 +46,6 @@ public static class Program
         }
         return main(args.Length, argv);
     }
+    
+    private static extern unsafe int main(int argc, sbyte** argv);
 }

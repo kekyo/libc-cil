@@ -35,9 +35,6 @@ namespace C
 
     public static partial class text
     {
-        private static readonly DateTime __unix_epoch =
-            new(1970, 1, 1, 0, 0, 0, DateTimeKind.Local);
-        
         [ThreadStatic]
         private static readonly unsafe type.tm* __localtime_buffer =
             (type.tm*)Marshal.AllocHGlobal(sizeof(type.tm));
@@ -58,13 +55,6 @@ namespace C
                 dateTime.Year, dateTime.Month, 1, 0, 0, 0, DateTimeKind.Local)).
                 TotalDays;
             tm->tm_isdst = dateTime.IsDaylightSavingTime() ? 1 : 0;
-        }
-
-        private static unsafe void __to_timespec(DateTime dateTime, type.timespec* ts)
-        {
-            var d = dateTime.Subtract(__unix_epoch);
-            ts->tv_sec = (long)d.TotalSeconds;
-            ts->tv_nsec = (long)(d.TotalMilliseconds * 1000);
         }
 
         ///////////////////////////////////////////////////////////////////////

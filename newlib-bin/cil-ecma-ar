@@ -1,0 +1,3 @@
+#!/bin/sh
+
+`dirname $0`/../../chibicc-cil-toolchain/chibiar/chibiar/bin/Debug/net6.0/cil-ecma-chibiar $@

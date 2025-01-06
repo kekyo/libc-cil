@@ -13,6 +13,7 @@ using System;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class string_test
 {
     [Test]

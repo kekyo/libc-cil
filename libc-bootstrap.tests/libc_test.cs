@@ -13,6 +13,7 @@ using System;
 
 namespace C;
 
+[Parallelizable(ParallelScope.All)]
 public sealed class libc_test
 {
     [Test]

@@ -23,6 +23,12 @@ namespace C
         {
         }
     }
+
+    public static partial class data
+    {
+        public const int PTHREAD_CANCEL_ENABLE = 0;
+        public const int PTHREAD_CANCEL_DISABLE = 1;
+    }
     
     public static partial class text
     {
@@ -136,6 +142,12 @@ namespace C
                 __set_exception_to_errno(ex);
                 return __errno;
             }
+            return 0;
+        }
+
+        public static unsafe int pthread_setcancelstate(int state, int* oldstate)
+        {
+            *oldstate = data.PTHREAD_CANCEL_DISABLE;
             return 0;
         }
     }
