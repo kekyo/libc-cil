@@ -75,13 +75,13 @@ public static partial class text
             var f = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
             return register_stream(f);
         }
-    
+
         public static int create(string path)
         {
             var f = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
             return register_stream(f);
         }
-      
+
         public static int open(string path)
         {
             var f = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);

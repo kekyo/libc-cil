@@ -49,6 +49,7 @@ namespace C
             return 0;
         }
 
+#if !LIBGLOSS
         // int close(int fd);
         public static int close(int fd)
         {
@@ -67,6 +68,7 @@ namespace C
                 return -1;
             }
         }
+#endif
 
         private static unsafe void __to_timespec(DateTime dateTime, type.timespec* ts)
         {

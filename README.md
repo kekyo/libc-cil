@@ -5,6 +5,7 @@
 This is a CIL/MSIL based libc implementation, uses on [chibicc-cil](https://github.com/kekyo/chibicc-cil) project and  [chibias-cil](https://github.com/kekyo/chibias-cil) project.
 It is WIP and broadcasting side-by-side GIT commit portion on [YouTube (In Japanese)](https://bit.ly/3XbqPSQ).
 
+Please refer [meta-build script repository](https://github.com/kekyo/chibicc-cil-toolchain) for first time.
 
 ### NuGet
 

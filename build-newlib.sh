@@ -39,5 +39,5 @@ CC=$NEWLIB_BIN_PATH/cil-ecma-cc ../newlib/configure \
     --disable-multilib \
     --with-sysroot=${NEWLIB_PREFIX}
 
-make -j 16
+make -j 20
 #make
